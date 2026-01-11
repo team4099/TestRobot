@@ -11,7 +11,6 @@ import edu.wpi.first.math.Matrix
 import edu.wpi.first.math.Nat.N1
 import edu.wpi.first.math.Nat.N2
 import edu.wpi.first.math.Vector
-import edu.wpi.first.math.numbers.N2
 import edu.wpi.first.wpilibj.DriverStation
 import edu.wpi.first.wpilibj.RobotBase
 import edu.wpi.first.wpilibj2.command.Command
@@ -37,6 +36,9 @@ import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.pow
 import kotlin.math.sqrt
+import org.team4099.lib.geometry.Transform2d
+import org.team4099.lib.geometry.Transform3d
+import org.team4099.lib.units.derived.inRotation2ds
 
 class FaceHubCommand(
   private val drivetrain: Drive,
@@ -45,12 +47,12 @@ class FaceHubCommand(
   val slowMode: () -> Boolean,
   val driver: DriverProfile
 ) : Command() {
-
-  private val templaunchsped= 10.meters.perSecond //mps
-  private val SHOOTER_HEIGHT = 0.meters
+  // TODO replace with real
+  private var templaunchspeed= 10.meters.perSecond //mps
+  private val SHOOTER_HEIGHT = 14.876.inches
   private val HUB_HEIGHT = 1.829.meters
   private val thetaPID: PIDController<Radian, Velocity<Radian>>
-  private val HUB_TRANSLATION = AllianceFlipUtil.apply(Translation2d(182.11.inches, 158.84.inches))
+  private var HUB_TRANSLATION: Translation2d = AllianceFlipUtil.apply(Translation2d(182.11.inches, 158.84.inches))
   var hasAligned: Boolean = false
 
   init {
@@ -89,28 +91,46 @@ class FaceHubCommand(
     thetaPID.enableContinuousInput(-PI.radians, PI.radians)
 
     CustomLogger.recordOutput("FaceHubCommand/lastInitialized", Clock.fpgaTime.inSeconds)
-
     CustomLogger.recordOutput("FaceHubCommand/hubTranslation", HUB_TRANSLATION.translation2d)
     hasAligned = false
+
+    HUB_TRANSLATION = AllianceFlipUtil.apply(Translation2d(182.11.inches, 158.84.inches))
   }
 
   override fun execute() {
     CustomLogger.recordOutput("ActiveCommands/FaceHubCommand", true)
-
     CustomLogger.recordOutput("FaceHubCommand/currentRotation", drivetrain.rotation.inDegrees)
 
-    val TOF = ((-templaunchsped.inMetersPerSecond + kotlin.math.sqrt(templaunchsped.inMetersPerSecond.pow(2)+2*Constants.Universal.gravity.inMetersPerSecondPerSecond*(HUB_HEIGHT.inMeters - SHOOTER_HEIGHT.inMeters)))/Constants.Universal.gravity.inMetersPerSecondPerSecond).seconds
     val distanceToHubX = HUB_TRANSLATION.x - drivetrain.pose.translation.x
     val distanceToHubY = HUB_TRANSLATION.y - drivetrain.pose.translation.y
-    val driveVector = Vector(Matrix(N2(), N1(), doubleArrayOf(drivetrain.chassisSpeeds.vx.inMetersPerSecond, drivetrain.chassisSpeeds.vy.inMetersPerSecond)))
-    val robotTHubVector =Vector(Matrix(N2(), N1(), doubleArrayOf(distanceToHubX.inMeters, distanceToHubY.inMeters)))
+
+    CustomLogger.recordOutput("FaceHubCommand/templaunchspeed", templaunchspeed.inMetersPerSecond)
+
+    // quadratic formula for t
+    val a = -Constants.Universal.gravity.inMetersPerSecondPerSecond / 2.0
+    val b = templaunchspeed.inMetersPerSecond
+    val c = SHOOTER_HEIGHT.inMeters - HUB_HEIGHT.inMeters
+    val TOF = Math.max(((-b - sqrt(b.pow(2.0) - 4.0 * a * c)) / (2.0 * a)), ((-b + sqrt(b.pow(2.0) - 4.0 * a * c)) / (2.0 * a))).seconds
+
+    val fieldSpeeds =
+      ChassisSpeeds(
+        edu.wpi.first.math.kinematics.ChassisSpeeds.fromRobotRelativeSpeeds(
+          drivetrain.chassisSpeeds.chassisSpeedsWPILIB,
+          drivetrain.rotation.inRotation2ds
+        )
+      )
+    val driveVector = Vector(Matrix(N2(), N1(), doubleArrayOf(fieldSpeeds.vx.inMetersPerSecond, fieldSpeeds.vy.inMetersPerSecond)))
+    val robotTHubVector = Vector(Matrix(N2(), N1(), doubleArrayOf(distanceToHubX.inMeters, distanceToHubY.inMeters)))
 
     val perpVel = driveVector.minus(driveVector.projection(robotTHubVector))
     val ballDistanceOffset = (perpVel.times(TOF.inSeconds))
+    CustomLogger.recordOutput("FaceHubCommand/shouldAimIfAccountingForBall",
+      Pose2d(HUB_TRANSLATION, 0.radians).transformBy(Transform2d(Translation2d(ballDistanceOffset.get(0).meters, ballDistanceOffset.get(1).meters), 0.radians).inverse()).pose2d
+      )
     val wantedRot =
       atan2(
-        (distanceToHubY.inMeters - ballDistanceOffset.get(1)),
-        (distanceToHubX.inMeters - ballDistanceOffset.get(0))
+        distanceToHubY.inMeters - ballDistanceOffset.get(1),
+        distanceToHubX.inMeters - ballDistanceOffset.get(0)
       )
         .radians
 

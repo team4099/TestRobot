@@ -11,7 +11,7 @@ import org.team4099.lib.units.perSecond
 
 object Constants {
   object Universal {
-    val gravity = -9.8.meters.perSecond.perSecond
+    val gravity = 9.8.meters.perSecond.perSecond
     val SIM_MODE = Tuning.SimType.SIM
     const val REAL_FIELD = false
 
