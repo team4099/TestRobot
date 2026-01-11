@@ -2,8 +2,6 @@ package com.team4099.robot2025.subsystems.vision.camera
 
 import com.team4099.robot2025.config.constants.FieldConstants
 import com.team4099.robot2025.config.constants.VisionConstants
-import edu.wpi.first.apriltag.AprilTagFieldLayout
-import edu.wpi.first.apriltag.AprilTagFields
 import edu.wpi.first.math.Matrix
 import edu.wpi.first.math.geometry.Pose2d
 import edu.wpi.first.math.numbers.N1

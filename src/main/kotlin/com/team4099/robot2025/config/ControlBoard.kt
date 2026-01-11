@@ -35,4 +35,6 @@ object ControlBoard {
     get() = driver.rightJoystickButton
 
   val resetGyro = Trigger { driver.startButton && driver.selectButton }
+
+  val testCommand = Trigger { driver.rightTriggerAxis > .5 }
 }

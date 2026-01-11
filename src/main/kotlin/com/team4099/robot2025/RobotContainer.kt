@@ -1,6 +1,7 @@
 package com.team4099.robot2025
 
 import com.ctre.phoenix6.signals.NeutralModeValue
+import com.team4099.robot2025.commands.drivetrain.FaceHubCommand
 import com.team4099.robot2025.commands.drivetrain.ResetGyroYawCommand
 import com.team4099.robot2025.commands.drivetrain.TeleopDriveCommand
 import com.team4099.robot2025.config.ControlBoard
@@ -54,16 +55,18 @@ object RobotContainer {
           driveSimulation!!::setSimulationWorldPose
         )
 
-      if (Constants.Universal.SIMULATE_VISION) vision = Vision(
-        CameraIOPVSim(
-          CameraIO.DetectionPipeline.APRIL_TAG,
-          "camera",
-          Transform3d(),
-          drivetrain::addVisionMeasurement,
-          { drivetrain.rotation }
-        ),
-        poseSupplier = { drivetrain.pose }
-      )
+      if (Constants.Universal.SIMULATE_VISION)
+        vision =
+          Vision(
+            CameraIOPVSim(
+              CameraIO.DetectionPipeline.APRIL_TAG,
+              "camera",
+              Transform3d(),
+              drivetrain::addVisionMeasurement,
+              { drivetrain.rotation }
+            ),
+            poseSupplier = { drivetrain.pose }
+          )
       else vision = Vision(poseSupplier = { Pose2d() })
     }
   }
@@ -90,6 +93,15 @@ object RobotContainer {
 
   fun mapTeleopControls() {
     ControlBoard.resetGyro.whileTrue(ResetGyroYawCommand(drivetrain))
+    ControlBoard.testCommand.whileTrue(
+      FaceHubCommand(
+        drivetrain,
+        { ControlBoard.forward.smoothDeadband(Constants.Joysticks.THROTTLE_DEADBAND) },
+        { ControlBoard.strafe.smoothDeadband(Constants.Joysticks.THROTTLE_DEADBAND) },
+        { ControlBoard.slowMode },
+        Test()
+      )
+    )
   }
 
   fun mapTestControls() {}
