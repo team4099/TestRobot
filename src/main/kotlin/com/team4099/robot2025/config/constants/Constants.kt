@@ -27,6 +27,8 @@ object Constants {
 
     const val SIMULATE_VISION = true
 
+    const val DISABLE_COLLISIONS = true
+
     enum class GamePiece {
       CORAL,
       ALGAE,

@@ -23,8 +23,8 @@ object VisionConstants {
 
   const val NUM_OF_CAMERAS = 3
 
-  val BLUE_REEF_TAGS = arrayOf(17, 18, 19, 20, 21, 22)
-  val RED_REEF_TAGS = arrayOf(6, 7, 8, 9, 10, 11)
+  val BLUE_TARGET_TAGS = arrayOf<Int>()
+  val RED_TARGET_TAGS = arrayOf<Int>()
 
   val OTF_PATHS =
     mapOf(
@@ -147,6 +147,6 @@ object VisionConstants {
 
   enum class OBJECT_CLASS(val id: Int, val mapleSimType: String?) {
     ALGAE(0, "Algae"),
-    CORAL(1, "Coral")
+    CORAL(1,  "Coral")
   }
 }

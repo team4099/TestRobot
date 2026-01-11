@@ -6,5 +6,5 @@ object FMSData {
   var allianceColor: DriverStation.Alliance? = null
 
   val isBlue: Boolean
-    get() = DriverStation.getAlliance().get() == DriverStation.Alliance.Blue
+    get() = DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue) == DriverStation.Alliance.Blue
 }

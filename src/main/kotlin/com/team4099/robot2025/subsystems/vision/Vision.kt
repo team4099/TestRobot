@@ -8,7 +8,6 @@ import com.team4099.lib.vision.TimestampedVisionUpdate
 import com.team4099.robot2025.config.constants.Constants
 import com.team4099.robot2025.config.constants.FieldConstants
 import com.team4099.robot2025.config.constants.VisionConstants
-import com.team4099.robot2025.subsystems.superstructure.Request
 import com.team4099.robot2025.subsystems.vision.camera.CameraIO
 import com.team4099.robot2025.util.CustomLogger
 import com.team4099.robot2025.util.FMSData
@@ -50,18 +49,6 @@ class Vision(vararg cameras: CameraIO, val poseSupplier: Supplier<Pose2d>) : Sub
 
   var tagIDFilter = arrayOf<Int>()
 
-  var currentState = VisionState.UNINITIALIZED
-  var currentRequest: Request.VisionRequest = Request.VisionRequest.TargetReef()
-    set(value) {
-      when (value) {
-        is Request.VisionRequest.TargetTag -> {
-          tagIDFilter = value.tags
-        }
-        else -> {}
-      }
-      field = value
-    }
-
   var isAutoAligning = false
   var isAligned = false
 
@@ -71,7 +58,7 @@ class Vision(vararg cameras: CameraIO, val poseSupplier: Supplier<Pose2d>) : Sub
 
   private var cameraPreference = 0 // 0 for left 1 for right
 
-  private var closestReefTagAcrossCams: Map.Entry<Int, Pair<Int, Transform3d>?>? = null
+  private var closestTargetTagAcrossCams: Map.Entry<Int, Pair<Int, Transform3d>?>? = null
 
   var lastTrigVisionUpdate =
     TimestampedTrigVisionUpdate(Clock.fpgaTime, -1, Transform2d(Translation2d(), 0.degrees))
@@ -120,12 +107,8 @@ class Vision(vararg cameras: CameraIO, val poseSupplier: Supplier<Pose2d>) : Sub
 
     Logger.recordOutput("Vision/currentTrigUpdateID", lastTrigVisionUpdate.targetTagID)
 
-    currentState = fromRequestToState(currentRequest)
-
-    if (currentState == VisionState.TARGETING_REEF && DriverStation.getAlliance().isPresent) {
-      tagIDFilter =
-        if (FMSData.isBlue) VisionConstants.BLUE_REEF_TAGS else VisionConstants.RED_REEF_TAGS
-    }
+    tagIDFilter =
+      if (FMSData.isBlue) VisionConstants.BLUE_TARGET_TAGS else VisionConstants.RED_TARGET_TAGS
 
     for (instance in io.indices) {
       io[instance].updateInputs(inputs[instance])
@@ -134,17 +117,17 @@ class Vision(vararg cameras: CameraIO, val poseSupplier: Supplier<Pose2d>) : Sub
 
     val visionUpdates = mutableListOf<TimestampedVisionUpdate>()
 
-    val closestReefTags = mutableMapOf<Int, Pair<Int, Transform3d>?>()
+    val closestTargetingTags = mutableMapOf<Int, Pair<Int, Transform3d>?>()
     for (i in io.indices) {
-      closestReefTags[i] = null
+      closestTargetingTags[i] = null
     }
 
     for (instance in io.indices) {
 
       when (io[instance].pipeline) {
         CameraIO.DetectionPipeline.APRIL_TAG -> {
-          var reefTags = mutableListOf<Pair<Int, Transform3d>>()
-          var closestReefTag: Pair<Int, Transform3d>? = null
+          var targetingTags = mutableListOf<Pair<Int, Transform3d>>()
+          var closestTargetTag: Pair<Int, Transform3d>? = null
 
           var tagTargets = inputs[instance].cameraTargets.filter { it.fiducialId != -1 }
 
@@ -153,8 +136,8 @@ class Vision(vararg cameras: CameraIO, val poseSupplier: Supplier<Pose2d>) : Sub
           for (tag in tagTargets) {
             if (tag.poseAmbiguity < VisionConstants.AMBIGUITY_THESHOLD) {
               if (DriverStation.getAlliance().isPresent) {
-                if ((tag.fiducialId in VisionConstants.BLUE_REEF_TAGS && FMSData.isBlue) ||
-                  (tag.fiducialId in VisionConstants.RED_REEF_TAGS && !FMSData.isBlue)
+                if ((tag.fiducialId in VisionConstants.BLUE_TARGET_TAGS && FMSData.isBlue) ||
+                  (tag.fiducialId in VisionConstants.RED_TARGET_TAGS && !FMSData.isBlue)
                 ) {
 
                   val aprilTagAlignmentAngle =
@@ -164,11 +147,6 @@ class Vision(vararg cameras: CameraIO, val poseSupplier: Supplier<Pose2d>) : Sub
                       .rotation
                       .z
                       .radians
-                  //                if (FMSData.isBlue) {
-                  //                  VisionConstants.BLUE_REEF_TAG_THETA_ALIGNMENTS[tag.fiducialId]
-                  //                } else {
-                  //                  VisionConstants.RED_REEF_TAG_THETA_ALIGNMENTS[tag.fiducialId]
-                  //                }
 
                   val fieldTTag =
                     Pose3d(
@@ -268,75 +246,79 @@ class Vision(vararg cameras: CameraIO, val poseSupplier: Supplier<Pose2d>) : Sub
                   }
 
                   if (tag.fiducialId in tagIDFilter) {
-                    reefTags.add(Pair(tag.fiducialId, robotTTag))
+                    targetingTags.add(Pair(tag.fiducialId, robotTTag))
                   }
                 }
               }
 
-              closestReefTag = reefTags.minByOrNull { it.second.translation.norm }
+              closestTargetTag = targetingTags.minByOrNull { it.second.translation.norm }
 
-              closestReefTags[instance] = closestReefTag
+              closestTargetingTags[instance] = closestTargetTag
 
               Logger.recordOutput(
-                "Vision/${VisionConstants.CAMERA_NAMES[instance]}/cornerDetections}",
+                "Vision/${VisionConstants.CAMERA_NAMES[instance]}/cornerDetections",
                 cornerData.toDoubleArray()
               )
 
               Logger.recordOutput(
-                "Vision/${VisionConstants.CAMERA_NAMES[instance]}/closestReefTagID}",
-                closestReefTag?.first ?: -1
+                "Vision/${VisionConstants.CAMERA_NAMES[instance]}/closestTargetTagID",
+                closestTargetTag?.first ?: -1
               )
 
               Logger.recordOutput(
-                "Vision/${VisionConstants.CAMERA_NAMES[instance]}/closestReefTagPose}",
-                closestReefTag?.second?.transform3d ?: Transform3dWPILIB()
+                "Vision/${VisionConstants.CAMERA_NAMES[instance]}/closestTargetTagPose",
+                closestTargetTag?.second?.transform3d ?: Transform3dWPILIB()
               )
             }
 
             Logger.recordOutput(
-              "Vision/viewingSameTag", closestReefTags[0]?.first == closestReefTags[1]?.first
+              "Vision/viewingSameTag",
+              closestTargetingTags[0]?.first == closestTargetingTags[1]?.first
             )
 
-            closestReefTagAcrossCams =
-              if (closestReefTags[0]?.first != closestReefTags[1]?.first) {
-                closestReefTags.minByOrNull {
+            closestTargetTagAcrossCams =
+              if (closestTargetingTags[0]?.first != closestTargetingTags[1]?.first) {
+                closestTargetingTags.minByOrNull {
                   it.value?.second?.translation?.norm ?: 1000000.meters
                 }
               } else {
-                mapOf(cameraPreference to closestReefTags[cameraPreference]).minByOrNull {
+                mapOf(cameraPreference to closestTargetingTags[cameraPreference]).minByOrNull {
                   it.value?.second?.translation?.norm ?: 1000000.meters
                 }
               }
 
             Logger.recordOutput(
-              "Vision/ClosestReefTagAcrossAllCams/CameraID",
-              if (closestReefTagAcrossCams != null)
-                VisionConstants.CAMERA_NAMES[closestReefTagAcrossCams?.key ?: -1]
+              "Vision/ClosestTargetTagAcrossAllCams/CameraID",
+              if (closestTargetTagAcrossCams != null)
+                VisionConstants.CAMERA_NAMES[closestTargetTagAcrossCams?.key ?: -1]
               else "None"
             )
 
             Logger.recordOutput(
-              "Vision/ClosestReefTagAcrossAllCams/TagID",
-              closestReefTagAcrossCams?.value?.first ?: -1
+              "Vision/ClosestTargetTagAcrossAllCams/TagID",
+              closestTargetTagAcrossCams?.value?.first ?: -1
             )
 
             Logger.recordOutput(
-              "Vision/ClosestReefTagAcrossAllCams/ReefTagPose",
-              closestReefTagAcrossCams?.value?.second?.transform3d ?: Transform3dWPILIB()
+              "Vision/ClosestTargetTagAcrossAllCams/TargetTagPose",
+              closestTargetTagAcrossCams?.value?.second?.transform3d ?: Transform3dWPILIB()
             )
 
-            if (closestReefTagAcrossCams?.key != null && closestReefTagAcrossCams?.value != null) {
+            if (closestTargetTagAcrossCams?.key != null &&
+              closestTargetTagAcrossCams?.value != null
+            ) {
 
               lastTrigVisionUpdate =
                 TimestampedTrigVisionUpdate(
-                  inputs[closestReefTagAcrossCams?.key ?: 0].timestamp,
-                  closestReefTagAcrossCams?.value?.first ?: -1,
+                  inputs[closestTargetTagAcrossCams?.key ?: 0].timestamp,
+                  closestTargetTagAcrossCams?.value?.first ?: -1,
                   Transform2d(
                     Translation2d(
-                      closestReefTagAcrossCams?.value?.second?.translation?.x ?: 0.meters,
-                      closestReefTagAcrossCams?.value?.second?.translation?.y ?: 0.meters
+                      closestTargetTagAcrossCams?.value?.second?.translation?.x ?: 0.meters,
+                      closestTargetTagAcrossCams?.value?.second?.translation?.y
+                        ?: 0.meters
                     ),
-                    closestReefTagAcrossCams?.value?.second?.rotation?.z ?: 0.degrees
+                    closestTargetTagAcrossCams?.value?.second?.rotation?.z ?: 0.degrees
                   )
                 )
             }
@@ -451,13 +433,14 @@ class Vision(vararg cameras: CameraIO, val poseSupplier: Supplier<Pose2d>) : Sub
 
     val now = Clock.fpgaTime
 
-    val tagId0 = closestReefTags[0]?.first
-    val tagId1 = closestReefTags[1]?.first
+    val tagId0 = closestTargetingTags[0]?.first
+    val tagId1 = closestTargetingTags[1]?.first
 
     val bothSeeingSameTag = tagId0 != null && tagId1 != null && tagId0 == tagId1
 
     val currentTagId = if (bothSeeingSameTag) tagId0 else null
-    val distanceToTag = closestReefTagAcrossCams?.value?.second?.translation?.norm ?: 1000000.meters
+    val distanceToTag =
+      closestTargetTagAcrossCams?.value?.second?.translation?.norm ?: 1000000.meters
 
     CustomLogger.recordOutput(
       "Vision/rumble",
@@ -486,20 +469,5 @@ class Vision(vararg cameras: CameraIO, val poseSupplier: Supplier<Pose2d>) : Sub
     Logger.recordOutput(
       "LoggedRobot/Subsystems/VisionLoopTimeMS", (Clock.realTimestamp - startTime).inMilliseconds
     )
-  }
-
-  companion object {
-    enum class VisionState {
-      UNINITIALIZED,
-      TARGETING_REEF,
-      TARGETING_TAG
-    }
-
-    fun fromRequestToState(request: Request.VisionRequest): VisionState {
-      return when (request) {
-        is Request.VisionRequest.TargetReef -> VisionState.TARGETING_REEF
-        is Request.VisionRequest.TargetTag -> VisionState.TARGETING_TAG
-      }
-    }
   }
 }

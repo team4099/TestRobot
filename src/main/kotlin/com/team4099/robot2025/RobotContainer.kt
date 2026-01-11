@@ -6,6 +6,8 @@ import com.team4099.robot2025.commands.drivetrain.ResetGyroYawCommand
 import com.team4099.robot2025.commands.drivetrain.TeleopDriveCommand
 import com.team4099.robot2025.config.ControlBoard
 import com.team4099.robot2025.config.constants.Constants
+import com.team4099.robot2025.config.constants.FieldConstants
+import com.team4099.robot2025.config.constants.VisionConstants
 import com.team4099.robot2025.subsystems.drivetrain.Drive
 import com.team4099.robot2025.subsystems.drivetrain.GyroIOPigeon2
 import com.team4099.robot2025.subsystems.drivetrain.GyroIOSim
@@ -14,6 +16,7 @@ import com.team4099.robot2025.subsystems.drivetrain.ModuleIOTalonFXSim
 import com.team4099.robot2025.subsystems.vision.Vision
 import com.team4099.robot2025.subsystems.vision.camera.CameraIO
 import com.team4099.robot2025.subsystems.vision.camera.CameraIOPVSim
+import com.team4099.robot2025.subsystems.vision.camera.CameraIOPhotonvision
 import com.team4099.robot2025.util.driver.Test
 import edu.wpi.first.wpilibj.RobotBase
 import org.ironmaple.simulation.SimulatedArena
@@ -32,6 +35,8 @@ object RobotContainer {
   var driveSimulation: SwerveDriveSimulation? = null
 
   init {
+    if (Constants.Universal.DISABLE_COLLISIONS) SimulatedArena.overrideInstance(FieldConstants.EMPTY_MAPLESIM_FIELD)
+
     if (RobotBase.isReal()) {
       drivetrain =
         Drive(
@@ -41,7 +46,16 @@ object RobotContainer {
           { pose -> {} }
         )
 
-      vision = Vision(poseSupplier = { drivetrain.pose })
+      vision = Vision(
+        CameraIOPhotonvision(
+          CameraIO.DetectionPipeline.APRIL_TAG,
+          "raven1",
+          VisionConstants.CAMERA_TRANSFORMS[0],
+          drivetrain::addVisionMeasurement,
+          { drivetrain.rotation }
+        ),
+        poseSupplier = { drivetrain.pose }
+      )
     } else {
       driveSimulation =
         SwerveDriveSimulation(Drive.mapleSimConfig, Pose2d(3.meters, 3.meters, 0.radians).pose2d)
@@ -60,7 +74,7 @@ object RobotContainer {
           Vision(
             CameraIOPVSim(
               CameraIO.DetectionPipeline.APRIL_TAG,
-              "camera",
+              "raven1",
               Transform3d(),
               drivetrain::addVisionMeasurement,
               { drivetrain.rotation }

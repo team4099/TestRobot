@@ -1,6 +1,7 @@
 package com.team4099.robot2025.config.constants
 
 import edu.wpi.first.apriltag.AprilTagFieldLayout
+import org.ironmaple.simulation.SimulatedArena
 import org.team4099.lib.apriltag.AprilTag
 import org.team4099.lib.geometry.Pose3d
 import org.team4099.lib.geometry.Rotation3d
@@ -263,6 +264,8 @@ object FieldConstants {
 
   val fieldLength = customFieldLayout.fieldLength.meters
   val fieldWidth = customFieldLayout.fieldWidth.meters
+
+  val EMPTY_MAPLESIM_FIELD = object : SimulatedArena(object : FieldMap() {}) { override fun placeGamePiecesOnField() {} }
 
   object REEF {
     val blue_center: Translation2d = Translation2d(176.746.inches, fieldWidth / 2.0)
