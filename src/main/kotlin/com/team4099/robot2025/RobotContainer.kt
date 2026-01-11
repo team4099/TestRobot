@@ -11,12 +11,15 @@ import com.team4099.robot2025.subsystems.drivetrain.GyroIOSim
 import com.team4099.robot2025.subsystems.drivetrain.ModuleIOTalonFXReal
 import com.team4099.robot2025.subsystems.drivetrain.ModuleIOTalonFXSim
 import com.team4099.robot2025.subsystems.vision.Vision
+import com.team4099.robot2025.subsystems.vision.camera.CameraIO
+import com.team4099.robot2025.subsystems.vision.camera.CameraIOPVSim
 import com.team4099.robot2025.util.driver.Test
 import edu.wpi.first.wpilibj.RobotBase
 import org.ironmaple.simulation.SimulatedArena
 import org.ironmaple.simulation.drivesims.SwerveDriveSimulation
 import org.littletonrobotics.junction.Logger
 import org.team4099.lib.geometry.Pose2d
+import org.team4099.lib.geometry.Transform3d
 import org.team4099.lib.smoothDeadband
 import org.team4099.lib.units.base.meters
 import org.team4099.lib.units.derived.radians
@@ -51,7 +54,16 @@ object RobotContainer {
           driveSimulation!!::setSimulationWorldPose
         )
 
-      if (Constants.Universal.SIMULATE_VISION) vision = Vision(poseSupplier = { drivetrain.pose })
+      if (Constants.Universal.SIMULATE_VISION) vision = Vision(
+        CameraIOPVSim(
+          CameraIO.DetectionPipeline.APRIL_TAG,
+          "camera",
+          Transform3d(),
+          drivetrain::addVisionMeasurement,
+          { drivetrain.rotation }
+        ),
+        poseSupplier = { drivetrain.pose }
+      )
       else vision = Vision(poseSupplier = { Pose2d() })
     }
   }
