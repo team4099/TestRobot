@@ -1,28 +1,42 @@
 package com.team4099.robot2025.commands.drivetrain
 
 import com.team4099.lib.hal.Clock
+import com.team4099.robot2025.config.constants.Constants
 import com.team4099.robot2025.config.constants.DrivetrainConstants
 import com.team4099.robot2025.subsystems.drivetrain.Drive
 import com.team4099.robot2025.util.AllianceFlipUtil
 import com.team4099.robot2025.util.CustomLogger
 import com.team4099.robot2025.util.driver.DriverProfile
+import edu.wpi.first.math.Matrix
+import edu.wpi.first.math.Nat.N1
+import edu.wpi.first.math.Nat.N2
+import edu.wpi.first.math.Vector
+import edu.wpi.first.math.numbers.N2
 import edu.wpi.first.wpilibj.DriverStation
 import edu.wpi.first.wpilibj.RobotBase
 import edu.wpi.first.wpilibj2.command.Command
 import org.team4099.lib.controller.PIDController
+import org.team4099.lib.geometry.Pose2d
 import org.team4099.lib.geometry.Translation2d
 import org.team4099.lib.kinematics.ChassisSpeeds
 import org.team4099.lib.units.Velocity
 import org.team4099.lib.units.base.inMeters
 import org.team4099.lib.units.base.inSeconds
 import org.team4099.lib.units.base.inches
+import org.team4099.lib.units.base.meters
+import org.team4099.lib.units.base.seconds
 import org.team4099.lib.units.derived.Radian
 import org.team4099.lib.units.derived.degrees
 import org.team4099.lib.units.derived.inDegrees
 import org.team4099.lib.units.derived.radians
 import org.team4099.lib.units.inDegreesPerSecond
+import org.team4099.lib.units.inMetersPerSecond
+import org.team4099.lib.units.inMetersPerSecondPerSecond
+import org.team4099.lib.units.perSecond
 import kotlin.math.PI
 import kotlin.math.atan2
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 class FaceHubCommand(
   private val drivetrain: Drive,
@@ -32,6 +46,9 @@ class FaceHubCommand(
   val driver: DriverProfile
 ) : Command() {
 
+  private val templaunchsped= 10.meters.perSecond //mps
+  private val SHOOTER_HEIGHT = 0.meters
+  private val HUB_HEIGHT = 1.829.meters
   private val thetaPID: PIDController<Radian, Velocity<Radian>>
   private val HUB_TRANSLATION = AllianceFlipUtil.apply(Translation2d(182.11.inches, 158.84.inches))
   var hasAligned: Boolean = false
@@ -82,10 +99,18 @@ class FaceHubCommand(
 
     CustomLogger.recordOutput("FaceHubCommand/currentRotation", drivetrain.rotation.inDegrees)
 
+    val TOF = ((-templaunchsped.inMetersPerSecond + kotlin.math.sqrt(templaunchsped.inMetersPerSecond.pow(2)+2*Constants.Universal.gravity.inMetersPerSecondPerSecond*(HUB_HEIGHT.inMeters - SHOOTER_HEIGHT.inMeters)))/Constants.Universal.gravity.inMetersPerSecondPerSecond).seconds
+    val distanceToHubX = HUB_TRANSLATION.x - drivetrain.pose.translation.x
+    val distanceToHubY = HUB_TRANSLATION.y - drivetrain.pose.translation.y
+    val driveVector = Vector(Matrix(N2(), N1(), doubleArrayOf(drivetrain.chassisSpeeds.vx.inMetersPerSecond, drivetrain.chassisSpeeds.vy.inMetersPerSecond)))
+    val robotTHubVector =Vector(Matrix(N2(), N1(), doubleArrayOf(distanceToHubX.inMeters, distanceToHubY.inMeters)))
+
+    val perpVel = driveVector.minus(driveVector.projection(robotTHubVector))
+    val ballDistanceOffset = (perpVel.times(TOF.inSeconds))
     val wantedRot =
       atan2(
-        (HUB_TRANSLATION.y - drivetrain.pose.translation.y).inMeters,
-        (HUB_TRANSLATION.x - drivetrain.pose.translation.x).inMeters
+        (distanceToHubY.inMeters - ballDistanceOffset.get(1)),
+        (distanceToHubX.inMeters - ballDistanceOffset.get(0))
       )
         .radians
 
@@ -96,7 +121,12 @@ class FaceHubCommand(
 
     CustomLogger.recordOutput("FaceHubCommand/thetaveldps", appliedThetavel.inDegreesPerSecond)
     CustomLogger.recordOutput("FaceHubCommand/thetaerror", thetaPID.error.inDegrees)
+    CustomLogger.recordOutput("FaceHubCommand/tof", TOF.inSeconds)
     val speed = driver.driveSpeedClampedSupplier(driveX, driveY, slowMode)
+
+    CustomLogger.recordOutput("FaceHubCommand/wantedPose", Pose2d(
+      drivetrain.pose.x, drivetrain.pose.y, wantedRot).pose2d
+    )
 
     drivetrain.runSpeeds(
       ChassisSpeeds.fromFieldRelativeSpeeds(
