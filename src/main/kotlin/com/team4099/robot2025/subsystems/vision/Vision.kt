@@ -25,6 +25,7 @@ import org.ironmaple.simulation.SimulatedArena
 import org.littletonrobotics.junction.Logger
 import org.photonvision.PhotonUtils
 import org.photonvision.simulation.VisionSystemSim
+import org.team4099.lib.apriltag.AprilTag
 import org.team4099.lib.geometry.Pose2d
 import org.team4099.lib.geometry.Pose3d
 import org.team4099.lib.geometry.Rotation3d
@@ -37,6 +38,7 @@ import org.team4099.lib.units.base.inInches
 import org.team4099.lib.units.base.inMeters
 import org.team4099.lib.units.base.inMilliseconds
 import org.team4099.lib.units.base.inSeconds
+import org.team4099.lib.units.base.inches
 import org.team4099.lib.units.base.meters
 import org.team4099.lib.units.base.seconds
 import org.team4099.lib.units.derived.cos
@@ -87,8 +89,6 @@ class Vision(vararg cameras: CameraIO, val poseSupplier: Supplier<Pose2d>) : Sub
       .map { TimestampedObjectVisionUpdate(Clock.fpgaTime, it, Translation2d()) }
       .toMutableList()
 
-  private val fieldLayout = AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField)
-
   private var lastSeenTagId: Int? = null
   private var pulseEndTime = 0.0.seconds
   var autoAlignReadyRumble = false
@@ -99,7 +99,7 @@ class Vision(vararg cameras: CameraIO, val poseSupplier: Supplier<Pose2d>) : Sub
   init {
     if (RobotBase.isSimulation() && Constants.Universal.SIMULATE_VISION) {
       visionSim = VisionSystemSim("main")
-      visionSim!!.addAprilTags(AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField))
+      visionSim!!.addAprilTags(FieldConstants.customFieldLayout)
 
       cameras.forEach { camera ->
         visionSim!!.addCamera(camera.cameraSim, camera.transform.transform3d)
@@ -162,7 +162,7 @@ class Vision(vararg cameras: CameraIO, val poseSupplier: Supplier<Pose2d>) : Sub
                 ) {
 
                   val aprilTagAlignmentAngle =
-                    fieldLayout.getTagPose(tag.fiducialId).get().rotation.z.radians
+                    FieldConstants.customFieldLayout.getTagPose(tag.fiducialId).get().rotation.z.radians
                   //                if (FMSData.isBlue) {
                   //                  VisionConstants.BLUE_REEF_TAG_THETA_ALIGNMENTS[tag.fiducialId]
                   //                } else {
@@ -170,10 +170,11 @@ class Vision(vararg cameras: CameraIO, val poseSupplier: Supplier<Pose2d>) : Sub
                   //                }
 
                   val fieldTTag =
-                    FieldConstants.AprilTagLayoutType.OFFICIAL
-                      .layout
-                      .getTagPose(tag.fiducialId)
-                      .toTransform3d()
+                    Pose3d(
+                      FieldConstants.customFieldLayout.getTagPose(tag.fiducialId).orElse(
+                        edu.wpi.first.math.geometry.Pose3d(-1337.0, -1337.0, -1337.0, edu.wpi.first.math.geometry.Rotation3d.kZero)
+                      )
+                    ).toTransform3d()
 
                   val cameraDistanceToTarget3D = tag.bestCameraToTarget.translation.norm.meters
                   val cameraDistanceToTarget2D = cameraDistanceToTarget3D * (tag.pitch.degrees).cos
