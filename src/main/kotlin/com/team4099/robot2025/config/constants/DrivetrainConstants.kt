@@ -107,10 +107,10 @@ object DrivetrainConstants {
     val AUTO_REEF_PID_KD =
       (0.4.degrees.perSecond / (1.degrees / 1.seconds)).radiansPerSecondPerRadiansPerSecond
 
-    val SIM_HUB_PID_KP = (4.1.radians.perSecond / 1.radians)
-    val SIM_HUB_PID_KI = (0.0.radians.perSecond / (1.radians * 1.seconds))
+    val SIM_HUB_PID_KP = (5.radians.perSecond / 1.radians)
+    val SIM_HUB_PID_KI = (0.2.radians.perSecond / (1.radians * 1.seconds))
     val SIM_HUB_PID_KD =
-      (0.5.degrees.perSecond / (1.degrees / 1.seconds)).radiansPerSecondPerRadiansPerSecond
+      (0.67.degrees.perSecond / (1.degrees / 1.seconds)).radiansPerSecondPerRadiansPerSecond
     val SIM_HUB_PID_KV = 3.radians.perSecond.perRadian
 
     val TELEOP_THETA_PID_KP = 5.5.degrees.perSecond / 1.degrees

@@ -17,6 +17,8 @@ import edu.wpi.first.units.Units.Meters
 import edu.wpi.first.wpilibj.DriverStation
 import edu.wpi.first.wpilibj.RobotBase
 import edu.wpi.first.wpilibj2.command.Command
+import edu.wpi.first.math.geometry.Translation2d as WPITranslation2d
+import com.team4099.lib.math.clamp
 import org.team4099.lib.controller.PIDController
 import org.team4099.lib.geometry.Pose2d
 import org.team4099.lib.geometry.Transform2d
@@ -40,12 +42,14 @@ import org.team4099.lib.units.perSecond
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sqrt
 import org.dyn4j.geometry.Circle
 import org.ironmaple.simulation.SimulatedArena
 import org.ironmaple.simulation.gamepieces.GamePieceOnFieldSimulation
 import org.ironmaple.simulation.gamepieces.GamePieceProjectile
+import org.team4099.lib.units.LinearVelocity
 import org.team4099.lib.units.derived.cos
 import org.team4099.lib.units.derived.sin
 import org.team4099.lib.units.derived.tan
@@ -60,7 +64,7 @@ class FaceHubCommand(
   // TODO replace with real
   private var templaunchspeedz = 10.meters.perSecond // mps
   private val SHOOTER_HEIGHT = 14.876.inches
-  private val HUB_HEIGHT = 1.5.meters
+  private val HUB_HEIGHT = 72.inches
   private val thetaPID: PIDController<Radian, Velocity<Radian>>
   private var HUB_TRANSLATION: Translation2d =
     AllianceFlipUtil.apply(Translation2d(182.11.inches, 158.84.inches))
@@ -157,8 +161,9 @@ class FaceHubCommand(
     val robotTHubVector =
       Vector(Matrix(N2(), N1(), doubleArrayOf(distanceToHubX.inMeters, distanceToHubY.inMeters)))
 
-    val perpVel = driveVector.minus(driveVector.projection(robotTHubVector))
-    val ballDistanceOffset = (perpVel.times(TOF.inSeconds))
+    val parallelVector = driveVector.projection(robotTHubVector)
+    val perpendicularVel = driveVector.minus(parallelVector)
+    val ballDistanceOffset = (perpendicularVel.times(TOF.inSeconds))
     CustomLogger.recordOutput(
       "FaceHubCommand/shouldAimIfAccountingForBall",
       Pose2d(HUB_TRANSLATION, 0.radians)
@@ -183,12 +188,21 @@ class FaceHubCommand(
     val thetavel = thetaPID.calculate(drivetrain.rotation, wantedRot)
     val ff = thetaPID.error * DrivetrainConstants.PID.SIM_HUB_PID_KV
 
-    val appliedThetavel = thetavel + ff
+    val appliedThetavel = clamp(thetavel + ff, -90.degrees.perSecond, 90.degrees.perSecond)
 
     CustomLogger.recordOutput("FaceHubCommand/thetaveldps", appliedThetavel.inDegreesPerSecond)
     CustomLogger.recordOutput("FaceHubCommand/thetaerror", thetaPID.error.inDegrees)
     CustomLogger.recordOutput("FaceHubCommand/tof", TOF.inSeconds)
     val speed = driver.driveSpeedClampedSupplier(driveX, driveY, slowMode)
+    val speedMagnitude = sqrt(speed.first.inMetersPerSecond.pow(2) + speed.second.inMetersPerSecond.pow(2))
+
+    var speedX: LinearVelocity = speed.first
+    var speedY: LinearVelocity = speed.second
+
+    if (speedMagnitude > 1.5) {
+      speedX /= speedMagnitude * 1.5
+      speedY /= speedMagnitude * 1.5
+    }
 
     CustomLogger.recordOutput(
       "FaceHubCommand/wantedPose", Pose2d(drivetrain.pose.x, drivetrain.pose.y, wantedRot).pose2d
@@ -196,7 +210,7 @@ class FaceHubCommand(
 
     drivetrain.runSpeeds(
       ChassisSpeeds.fromFieldRelativeSpeeds(
-        speed.first, speed.second, appliedThetavel, drivetrain.pose.rotation
+        speed.first / (speedMagnitude / 1.5), speed.second / (speedMagnitude / 1.5), appliedThetavel, drivetrain.pose.rotation
       ),
       flipIfRed = true
     )
@@ -220,8 +234,9 @@ class FaceHubCommand(
             0.4
           ),
           drivetrain.pose.translation.translation2d,
-          edu.wpi.first.math.geometry.Translation2d(fieldSpeeds.vx.inMetersPerSecond, fieldSpeeds.vy.inMetersPerSecond)
-            + edu.wpi.first.math.geometry.Translation2d(templaunchspeedz.inMetersPerSecond * 20.degrees.tan, 0.0).rotateBy(drivetrain.rotation.inRotation2ds),
+          WPITranslation2d(fieldSpeeds.vx.inMetersPerSecond, fieldSpeeds.vy.inMetersPerSecond)
+            + WPITranslation2d(templaunchspeedz.inMetersPerSecond * 20.degrees.tan, 0.0).rotateBy(drivetrain.rotation.inRotation2ds)
+            - WPITranslation2d(parallelVector.get(0), parallelVector.get(1)),
           SHOOTER_HEIGHT.inMeters,
           templaunchspeedz.inMetersPerSecond,
           Rotation3d.kZero
