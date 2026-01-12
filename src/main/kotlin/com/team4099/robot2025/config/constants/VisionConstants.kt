@@ -120,21 +120,16 @@ object VisionConstants {
   val CAMERA_TRANSFORMS =
     listOf(
       Transform3d(
-        Translation3d(-10.398.inches, -11.593.inches, 8.36.inches),
-        Rotation3d(0.0.degrees, -20.degrees, 145.degrees)
+        Translation3d(10.3.inches, 11.255.inches, 8.397.inches),
+        Rotation3d(0.0.degrees, -20.degrees, -30.degrees)
       ), // raven_1
       Transform3d(
-        Translation3d(-10.398.inches, 11.593.inches, 8.36.inches),
-        Rotation3d(0.0.degrees, -20.degrees, -145.degrees)
+        Translation3d(10.3.inches, -11.255.inches, 8.397.inches),
+        Rotation3d(0.0.degrees, -20.degrees, 30.degrees)
       ), // raven_2
-      Transform3d(
-        Translation3d(10.398.inches, -11.593.inches, 8.36.inches)
-          .plus(Translation3d(4.342.inches, 18.23.inches, 32.372.inches)),
-        Rotation3d(0.0.degrees, 30.degrees, 0.degrees)
-      ) // raven_o1
     )
 
-  val CAMERA_NAMES = listOf("raven_1", "raven_2", "raven_o1")
+  val CAMERA_NAMES = listOf("raven_1", "raven_2")
 
   // x, y, θ
   // TODO tune
@@ -143,7 +138,7 @@ object VisionConstants {
 
   val oldStdDevs: Matrix<N3?, N1?> = VecBuilder.fill(XY_STDDEV, XY_STDDEV, THETA_STDDEV)
 
-  val FIELD_POSE_RESET_DISTANCE_THRESHOLD = .75.meters
+  val FIELD_POSE_RESET_DISTANCE_THRESHOLD = 5.meters
 
   enum class OBJECT_CLASS(val id: Int, val mapleSimType: String?) {
     ALGAE(0, "Algae"),

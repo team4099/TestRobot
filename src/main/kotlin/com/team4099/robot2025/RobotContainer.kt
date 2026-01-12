@@ -49,8 +49,15 @@ object RobotContainer {
       vision = Vision(
         CameraIOPhotonvision(
           CameraIO.DetectionPipeline.APRIL_TAG,
-          "raven1",
+          VisionConstants.CAMERA_NAMES[0],
           VisionConstants.CAMERA_TRANSFORMS[0],
+          drivetrain::addVisionMeasurement,
+          { drivetrain.rotation }
+        ),
+        CameraIOPhotonvision(
+          CameraIO.DetectionPipeline.APRIL_TAG,
+          VisionConstants.CAMERA_NAMES[1],
+          VisionConstants.CAMERA_TRANSFORMS[1],
           drivetrain::addVisionMeasurement,
           { drivetrain.rotation }
         ),
