@@ -265,7 +265,10 @@ object FieldConstants {
   val fieldLength = customFieldLayout.fieldLength.meters
   val fieldWidth = customFieldLayout.fieldWidth.meters
 
-  val EMPTY_MAPLESIM_FIELD = object : SimulatedArena(object : FieldMap() {}) { override fun placeGamePiecesOnField() {} }
+  val EMPTY_MAPLESIM_FIELD =
+    object : SimulatedArena(object : FieldMap() {}) {
+      override fun placeGamePiecesOnField() {}
+    }
 
   object REEF {
     val blue_center: Translation2d = Translation2d(176.746.inches, fieldWidth / 2.0)

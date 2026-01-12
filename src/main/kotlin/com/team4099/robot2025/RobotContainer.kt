@@ -18,12 +18,19 @@ import com.team4099.robot2025.subsystems.vision.camera.CameraIO
 import com.team4099.robot2025.subsystems.vision.camera.CameraIOPVSim
 import com.team4099.robot2025.subsystems.vision.camera.CameraIOPhotonvision
 import com.team4099.robot2025.util.driver.Test
+import edu.wpi.first.units.Units.Kilograms
+import edu.wpi.first.units.Units.Meters
 import edu.wpi.first.wpilibj.RobotBase
+import edu.wpi.first.wpilibj2.command.Commands
+import org.dyn4j.geometry.Circle
 import org.ironmaple.simulation.SimulatedArena
 import org.ironmaple.simulation.drivesims.SwerveDriveSimulation
+import org.ironmaple.simulation.gamepieces.GamePieceOnFieldSimulation
+import org.ironmaple.simulation.gamepieces.GamePieceProjectile
 import org.littletonrobotics.junction.Logger
 import org.team4099.lib.geometry.Pose2d
 import org.team4099.lib.geometry.Transform3d
+import org.team4099.lib.geometry.Translation2d
 import org.team4099.lib.smoothDeadband
 import org.team4099.lib.units.base.meters
 import org.team4099.lib.units.derived.radians
@@ -35,7 +42,8 @@ object RobotContainer {
   var driveSimulation: SwerveDriveSimulation? = null
 
   init {
-    if (Constants.Universal.DISABLE_COLLISIONS) SimulatedArena.overrideInstance(FieldConstants.EMPTY_MAPLESIM_FIELD)
+    if (Constants.Universal.DISABLE_COLLISIONS)
+      SimulatedArena.overrideInstance(FieldConstants.EMPTY_MAPLESIM_FIELD)
 
     if (RobotBase.isReal()) {
       drivetrain =
@@ -46,23 +54,24 @@ object RobotContainer {
           { pose -> {} }
         )
 
-      vision = Vision(
-        CameraIOPhotonvision(
-          CameraIO.DetectionPipeline.APRIL_TAG,
-          VisionConstants.CAMERA_NAMES[0],
-          VisionConstants.CAMERA_TRANSFORMS[0],
-          drivetrain::addVisionMeasurement,
-          { drivetrain.rotation }
-        ),
-        CameraIOPhotonvision(
-          CameraIO.DetectionPipeline.APRIL_TAG,
-          VisionConstants.CAMERA_NAMES[1],
-          VisionConstants.CAMERA_TRANSFORMS[1],
-          drivetrain::addVisionMeasurement,
-          { drivetrain.rotation }
-        ),
-        poseSupplier = { drivetrain.pose }
-      )
+      vision =
+        Vision(
+          CameraIOPhotonvision(
+            CameraIO.DetectionPipeline.APRIL_TAG,
+            VisionConstants.CAMERA_NAMES[0],
+            VisionConstants.CAMERA_TRANSFORMS[0],
+            drivetrain::addVisionMeasurement,
+            { drivetrain.rotation }
+          ),
+          CameraIOPhotonvision(
+            CameraIO.DetectionPipeline.APRIL_TAG,
+            VisionConstants.CAMERA_NAMES[1],
+            VisionConstants.CAMERA_TRANSFORMS[1],
+            drivetrain::addVisionMeasurement,
+            { drivetrain.rotation }
+          ),
+          poseSupplier = { drivetrain.pose }
+        )
     } else {
       driveSimulation =
         SwerveDriveSimulation(Drive.mapleSimConfig, Pose2d(3.meters, 3.meters, 0.radians).pose2d)
@@ -142,10 +151,7 @@ object RobotContainer {
     SimulatedArena.getInstance().simulationPeriodic()
     Logger.recordOutput("FieldSimulation/RobotPosition", driveSimulation!!.simulatedDriveTrainPose)
     Logger.recordOutput(
-      "FieldSimulation/Coral", *SimulatedArena.getInstance().getGamePiecesArrayByType("Coral")
-    )
-    Logger.recordOutput(
-      "FieldSimulation/Algae", *SimulatedArena.getInstance().getGamePiecesArrayByType("Algae")
+      "FieldSimulation/Fuel", *SimulatedArena.getInstance().getGamePiecesArrayByType("Fuel")
     )
   }
 }
