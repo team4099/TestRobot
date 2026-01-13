@@ -2,6 +2,7 @@ package com.team4099.robot2025
 
 import com.pathplanner.lib.commands.FollowPathCommand
 import com.team4099.lib.hal.Clock
+import com.team4099.robot2025.auto.AutonomousSelector
 import com.team4099.robot2025.commands.drivetrain.DrivePathOTF
 import com.team4099.robot2025.config.constants.Constants
 import com.team4099.robot2025.util.Alert
@@ -129,6 +130,7 @@ object Robot : LoggedRobot() {
     // init robot container too
     RobotContainer
     RobotContainer.mapDefaultCommands()
+    AutonomousSelector
 
     // init commands that have long startup
     DrivePathOTF.warmupCommand()
@@ -167,6 +169,7 @@ object Robot : LoggedRobot() {
 
   override fun disabledPeriodic() {
     FMSData.allianceColor = DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue)
+    autonomousCommand = RobotContainer.getAutonomousCommand()
   }
 
   override fun disabledInit() {
@@ -200,6 +203,7 @@ object Robot : LoggedRobot() {
   override fun teleopInit() {
     //    RobotContainer.zeroSensors(isInAutonomous = false)
     RobotContainer.mapTeleopControls()
+    RobotContainer.getAutonomousCommand().cancel()
     //    RobotContainer.requestIdle()
     RobotContainer.setDriveBrakeMode()
     if (Constants.Tuning.TUNING_MODE) {
@@ -211,6 +215,8 @@ object Robot : LoggedRobot() {
 
   override fun testInit() {
     RobotContainer.mapTestControls()
+    RobotContainer.getAutonomousCommand().cancel()
+    Logger.start()
   }
 
   override fun simulationPeriodic() {

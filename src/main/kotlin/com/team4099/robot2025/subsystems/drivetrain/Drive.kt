@@ -41,7 +41,7 @@ import edu.wpi.first.units.Units.KilogramSquareMeters
 import edu.wpi.first.units.Units.Kilograms
 import edu.wpi.first.units.Units.Meters
 import edu.wpi.first.units.Units.Seconds
-import edu.wpi.first.units.Units.Volts as
+import edu.wpi.first.units.Units.Volts
 import edu.wpi.first.units.measure.Voltage
 import edu.wpi.first.wpilibj.Alert
 import edu.wpi.first.wpilibj.DriverStation
@@ -73,9 +73,7 @@ import org.team4099.lib.units.derived.inRadiansPerSecondPerRadianSeconds
 import org.team4099.lib.units.derived.inRadiansPerSecondPerRadiansPerSecond
 import org.team4099.lib.units.derived.inRotation2ds
 import org.team4099.lib.units.derived.radians
-import org.team4099.lib.units.derived.volts
 import org.team4099.lib.units.inMetersPerSecond
-import org.team4099.lib.units.perSecond
 import java.util.concurrent.locks.Lock
 import java.util.concurrent.locks.ReentrantLock
 import java.util.function.Consumer
@@ -170,7 +168,8 @@ class Drive(
     // Configure SysId
     sysId =
       SysIdRoutine(
-        SysIdRoutine.Config(Volts.of(1.0)/Seconds.of(1.0), Volts.of(7.0), Seconds.of(10.0)) { state: SysIdRoutineLog.State ->
+        SysIdRoutine.Config(Volts.of(1.0) / Seconds.of(1.0), Volts.of(7.0), Seconds.of(10.0)) {
+          state: SysIdRoutineLog.State ->
           Logger.recordOutput("Drive/SysIdState", state.toString())
         },
         SysIdRoutine.Mechanism(

@@ -1,6 +1,7 @@
 package com.team4099.robot2025.commands.drivetrain
 
 import com.team4099.lib.hal.Clock
+import com.team4099.lib.math.clamp
 import com.team4099.robot2025.config.constants.Constants
 import com.team4099.robot2025.config.constants.DrivetrainConstants
 import com.team4099.robot2025.subsystems.drivetrain.Drive
@@ -17,13 +18,16 @@ import edu.wpi.first.units.Units.Meters
 import edu.wpi.first.wpilibj.DriverStation
 import edu.wpi.first.wpilibj.RobotBase
 import edu.wpi.first.wpilibj2.command.Command
-import edu.wpi.first.math.geometry.Translation2d as WPITranslation2d
-import com.team4099.lib.math.clamp
+import org.dyn4j.geometry.Circle
+import org.ironmaple.simulation.SimulatedArena
+import org.ironmaple.simulation.gamepieces.GamePieceOnFieldSimulation
+import org.ironmaple.simulation.gamepieces.GamePieceProjectile
 import org.team4099.lib.controller.PIDController
 import org.team4099.lib.geometry.Pose2d
 import org.team4099.lib.geometry.Transform2d
 import org.team4099.lib.geometry.Translation2d
 import org.team4099.lib.kinematics.ChassisSpeeds
+import org.team4099.lib.units.LinearVelocity
 import org.team4099.lib.units.Velocity
 import org.team4099.lib.units.base.inMeters
 import org.team4099.lib.units.base.inSeconds
@@ -31,10 +35,13 @@ import org.team4099.lib.units.base.inches
 import org.team4099.lib.units.base.meters
 import org.team4099.lib.units.base.seconds
 import org.team4099.lib.units.derived.Radian
+import org.team4099.lib.units.derived.cos
 import org.team4099.lib.units.derived.degrees
 import org.team4099.lib.units.derived.inDegrees
 import org.team4099.lib.units.derived.inRotation2ds
 import org.team4099.lib.units.derived.radians
+import org.team4099.lib.units.derived.sin
+import org.team4099.lib.units.derived.tan
 import org.team4099.lib.units.inDegreesPerSecond
 import org.team4099.lib.units.inMetersPerSecond
 import org.team4099.lib.units.inMetersPerSecondPerSecond
@@ -42,17 +49,9 @@ import org.team4099.lib.units.perSecond
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sqrt
-import org.dyn4j.geometry.Circle
-import org.ironmaple.simulation.SimulatedArena
-import org.ironmaple.simulation.gamepieces.GamePieceOnFieldSimulation
-import org.ironmaple.simulation.gamepieces.GamePieceProjectile
-import org.team4099.lib.units.LinearVelocity
-import org.team4099.lib.units.derived.cos
-import org.team4099.lib.units.derived.sin
-import org.team4099.lib.units.derived.tan
+import edu.wpi.first.math.geometry.Translation2d as WPITranslation2d
 
 class FaceHubCommand(
   private val drivetrain: Drive,
@@ -125,13 +124,7 @@ class FaceHubCommand(
 
     CustomLogger.recordOutput("FaceHubCommand/templaunchspeedz", templaunchspeedz.inMetersPerSecond)
 
-    templaunchspeedz =
-      (
-        1.00805 * distanceToHubMag.inMeters +
-        4.42681
-        )
-        .meters
-        .perSecond
+    templaunchspeedz = (1.00805 * distanceToHubMag.inMeters + 4.42681).meters.perSecond
 
     // quadratic formula for t
     val a = -Constants.Universal.gravity.inMetersPerSecondPerSecond / 2.0
@@ -194,7 +187,8 @@ class FaceHubCommand(
     CustomLogger.recordOutput("FaceHubCommand/thetaerror", thetaPID.error.inDegrees)
     CustomLogger.recordOutput("FaceHubCommand/tof", TOF.inSeconds)
     val speed = driver.driveSpeedClampedSupplier(driveX, driveY, slowMode)
-    val speedMagnitude = sqrt(speed.first.inMetersPerSecond.pow(2) + speed.second.inMetersPerSecond.pow(2))
+    val speedMagnitude =
+      sqrt(speed.first.inMetersPerSecond.pow(2) + speed.second.inMetersPerSecond.pow(2))
 
     var speedX: LinearVelocity = speed.first
     var speedY: LinearVelocity = speed.second
@@ -210,7 +204,10 @@ class FaceHubCommand(
 
     drivetrain.runSpeeds(
       ChassisSpeeds.fromFieldRelativeSpeeds(
-        speed.first / (speedMagnitude / 1.5), speed.second / (speedMagnitude / 1.5), appliedThetavel, drivetrain.pose.rotation
+        speed.first / (speedMagnitude / 1.5),
+        speed.second / (speedMagnitude / 1.5),
+        appliedThetavel,
+        drivetrain.pose.rotation
       ),
       flipIfRed = true
     )
@@ -219,33 +216,43 @@ class FaceHubCommand(
 
     CustomLogger.recordOutput("FaceHubCommand/hasAligned", hasAligned)
 
-    /////
+    // ///
 
     if (RobotBase.isSimulation() && Clock.fpgaTime.inSeconds % 1.0 < 0.04)
-      SimulatedArena.getInstance().addGamePieceProjectile(
-        GamePieceProjectile(
-          GamePieceOnFieldSimulation.GamePieceInfo(
-            "Fuel",
-            Circle(0.15),
-            Meters.of(0.15),
-            Kilograms.of(0.226796),
-            0.05,
-            0.085,
-            0.4
-          ),
-          drivetrain.pose.translation.translation2d,
-          WPITranslation2d(fieldSpeeds.vx.inMetersPerSecond, fieldSpeeds.vy.inMetersPerSecond)
-            + WPITranslation2d(templaunchspeedz.inMetersPerSecond * 20.degrees.tan, 0.0).rotateBy(drivetrain.rotation.inRotation2ds)
-            - WPITranslation2d(parallelVector.get(0), parallelVector.get(1)),
-          SHOOTER_HEIGHT.inMeters,
-          templaunchspeedz.inMetersPerSecond,
-          Rotation3d.kZero
+      SimulatedArena.getInstance()
+        .addGamePieceProjectile(
+          GamePieceProjectile(
+            GamePieceOnFieldSimulation.GamePieceInfo(
+              "Fuel",
+              Circle(0.15),
+              Meters.of(0.15),
+              Kilograms.of(0.226796),
+              0.05,
+              0.085,
+              0.4
+            ),
+            drivetrain.pose.translation.translation2d,
+            WPITranslation2d(
+              fieldSpeeds.vx.inMetersPerSecond, fieldSpeeds.vy.inMetersPerSecond
+            ) +
+              WPITranslation2d(templaunchspeedz.inMetersPerSecond * 20.degrees.tan, 0.0)
+                .rotateBy(drivetrain.rotation.inRotation2ds) -
+              WPITranslation2d(parallelVector.get(0), parallelVector.get(1)),
+            SHOOTER_HEIGHT.inMeters,
+            templaunchspeedz.inMetersPerSecond,
+            Rotation3d.kZero
           )
-      )
+        )
 
-    CustomLogger.recordOutput("FaceHubCommand/3dBallVelocity",
-      edu.wpi.first.math.geometry.Translation2d(fieldSpeeds.vx.inMetersPerSecond, fieldSpeeds.vy.inMetersPerSecond)
-          + edu.wpi.first.math.geometry.Translation2d((templaunchspeedz.inMetersPerSecond / 70.degrees.sin) * 20.degrees.cos, 0.0).rotateBy(drivetrain.rotation.inRotation2ds)
+    CustomLogger.recordOutput(
+      "FaceHubCommand/3dBallVelocity",
+      edu.wpi.first.math.geometry.Translation2d(
+        fieldSpeeds.vx.inMetersPerSecond, fieldSpeeds.vy.inMetersPerSecond
+      ) +
+        edu.wpi.first.math.geometry.Translation2d(
+          (templaunchspeedz.inMetersPerSecond / 70.degrees.sin) * 20.degrees.cos, 0.0
+        )
+          .rotateBy(drivetrain.rotation.inRotation2ds)
     )
   }
 

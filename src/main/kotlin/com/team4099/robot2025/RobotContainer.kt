@@ -1,6 +1,7 @@
 package com.team4099.robot2025
 
 import com.ctre.phoenix6.signals.NeutralModeValue
+import com.team4099.robot2025.auto.AutonomousSelector
 import com.team4099.robot2025.commands.drivetrain.FaceHubCommand
 import com.team4099.robot2025.commands.drivetrain.ResetGyroYawCommand
 import com.team4099.robot2025.commands.drivetrain.TeleopDriveCommand
@@ -18,19 +19,12 @@ import com.team4099.robot2025.subsystems.vision.camera.CameraIO
 import com.team4099.robot2025.subsystems.vision.camera.CameraIOPVSim
 import com.team4099.robot2025.subsystems.vision.camera.CameraIOPhotonvision
 import com.team4099.robot2025.util.driver.Test
-import edu.wpi.first.units.Units.Kilograms
-import edu.wpi.first.units.Units.Meters
 import edu.wpi.first.wpilibj.RobotBase
-import edu.wpi.first.wpilibj2.command.Commands
-import org.dyn4j.geometry.Circle
 import org.ironmaple.simulation.SimulatedArena
 import org.ironmaple.simulation.drivesims.SwerveDriveSimulation
-import org.ironmaple.simulation.gamepieces.GamePieceOnFieldSimulation
-import org.ironmaple.simulation.gamepieces.GamePieceProjectile
 import org.littletonrobotics.junction.Logger
 import org.team4099.lib.geometry.Pose2d
 import org.team4099.lib.geometry.Transform3d
-import org.team4099.lib.geometry.Translation2d
 import org.team4099.lib.smoothDeadband
 import org.team4099.lib.units.base.meters
 import org.team4099.lib.units.derived.radians
@@ -137,6 +131,9 @@ object RobotContainer {
   fun mapTestControls() {}
 
   fun mapTunableCommands() {}
+
+  fun getAutonomousCommand() =
+    AutonomousSelector.getCommand(drivetrain, vision)
 
   fun resetSimulationField() {
     if (!RobotBase.isSimulation()) return

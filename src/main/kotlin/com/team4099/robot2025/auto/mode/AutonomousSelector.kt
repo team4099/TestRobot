@@ -27,6 +27,7 @@ object AutonomousSelector {
     autonomousModeChooser.addOption(
       "Example Auto DO NOT RUN AT COMPETITION", AutonomousMode.EXAMPLE_AUTO
     )
+    autonomousModeChooser.addOption("SysID DON'T RUN AT COMP", AutonomousMode.SYSID)
 
     autoTab.add("Mode", autonomousModeChooser.sendableChooser).withSize(4, 2).withPosition(2, 0)
 
@@ -42,30 +43,22 @@ object AutonomousSelector {
   val waitTime: Time
     get() = waitBeforeCommandSlider.getDouble(0.0).seconds
 
-  fun getCommand(
-    drivetrain: Drive,
-    vision: Vision
-  ): Command {
+  fun getCommand(drivetrain: Drive, vision: Vision): Command {
     val mode = autonomousModeChooser.get()
 
     when (mode) {
       AutonomousMode.EXAMPLE_AUTO ->
         return WaitCommand(waitTime.inSeconds)
-          .andThen({ drivetrain.pose = AllianceFlipUtil.apply(ExamplePathAuto.startingPose) })
           .andThen(ExamplePathAuto(drivetrain))
-
-
       AutonomousMode.SYSID ->
         return WaitCommand(waitTime.inSeconds)
-          .andThen({ drivetrain.pose = AllianceFlipUtil.apply(ExamplePathAuto.startingPose) })
           .andThen(SysID(drivetrain))
+      else -> return InstantCommand()
     }
   }
-  }
+}
 
-  private enum class AutonomousMode {
-    EXAMPLE_AUTO,
-    SYSID
-  }
-
-
+private enum class AutonomousMode {
+  EXAMPLE_AUTO,
+  SYSID
+}
