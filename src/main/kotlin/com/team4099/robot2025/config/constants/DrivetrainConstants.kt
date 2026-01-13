@@ -17,7 +17,6 @@ import org.team4099.lib.units.derived.metersPerSecondPerMetersPerSecond
 import org.team4099.lib.units.derived.perDegreePerSecond
 import org.team4099.lib.units.derived.perDegreeSeconds
 import org.team4099.lib.units.derived.perMeterPerSecond
-import org.team4099.lib.units.derived.perRadian
 import org.team4099.lib.units.derived.radians
 import org.team4099.lib.units.derived.radiansPerSecondPerRadiansPerSecond
 import org.team4099.lib.units.derived.volts
@@ -107,11 +106,10 @@ object DrivetrainConstants {
     val AUTO_REEF_PID_KD =
       (0.4.degrees.perSecond / (1.degrees / 1.seconds)).radiansPerSecondPerRadiansPerSecond
 
-    val SIM_HUB_PID_KP = (5.radians.perSecond / 1.radians)
-    val SIM_HUB_PID_KI = (0.2.radians.perSecond / (1.radians * 1.seconds))
+    val SIM_HUB_PID_KP = (6.7.radians.perSecond / 1.radians)
+    val SIM_HUB_PID_KI = (0.0.radians.perSecond / (1.radians * 1.seconds))
     val SIM_HUB_PID_KD =
-      (0.67.degrees.perSecond / (1.degrees / 1.seconds)).radiansPerSecondPerRadiansPerSecond
-    val SIM_HUB_PID_KV = 3.radians.perSecond.perRadian
+      (.41.degrees.perSecond / (1.degrees / 1.seconds)).radiansPerSecondPerRadiansPerSecond
 
     val TELEOP_THETA_PID_KP = 5.5.degrees.perSecond / 1.degrees
     val TELEOP_THETA_PID_KI = 0.0.degrees.perSecond / (1.degrees * 1.seconds)

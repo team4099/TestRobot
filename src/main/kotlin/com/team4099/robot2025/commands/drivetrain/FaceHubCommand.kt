@@ -1,7 +1,6 @@
 package com.team4099.robot2025.commands.drivetrain
 
 import com.team4099.lib.hal.Clock
-import com.team4099.lib.math.clamp
 import com.team4099.robot2025.config.constants.Constants
 import com.team4099.robot2025.config.constants.DrivetrainConstants
 import com.team4099.robot2025.subsystems.drivetrain.Drive
@@ -27,7 +26,6 @@ import org.team4099.lib.geometry.Pose2d
 import org.team4099.lib.geometry.Transform2d
 import org.team4099.lib.geometry.Translation2d
 import org.team4099.lib.kinematics.ChassisSpeeds
-import org.team4099.lib.units.LinearVelocity
 import org.team4099.lib.units.Velocity
 import org.team4099.lib.units.base.inMeters
 import org.team4099.lib.units.base.inSeconds
@@ -52,7 +50,9 @@ import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.sqrt
 import edu.wpi.first.math.geometry.Translation2d as WPITranslation2d
+import edu.wpi.first.math.kinematics.ChassisSpeeds as WPIChassisSpeeds
 
+/** @author Nathan Arega, Ryan Chung */
 class FaceHubCommand(
   private val drivetrain: Drive,
   val driveX: () -> Double,
@@ -61,13 +61,15 @@ class FaceHubCommand(
   val driver: DriverProfile
 ) : Command() {
   // TODO replace with real
-  private var templaunchspeedz = 10.meters.perSecond // mps
+  private var launchSpeedZ = 10.meters.perSecond // mps
   private val SHOOTER_HEIGHT = 14.876.inches
   private val HUB_HEIGHT = 72.inches
   private val thetaPID: PIDController<Radian, Velocity<Radian>>
   private var HUB_TRANSLATION: Translation2d =
     AllianceFlipUtil.apply(Translation2d(182.11.inches, 158.84.inches))
   var hasAligned: Boolean = false
+
+  val MAX_VELOCITY_RADIUS = 1.5
 
   init {
     addRequirements(drivetrain)
@@ -112,34 +114,37 @@ class FaceHubCommand(
   }
 
   override fun execute() {
+    // this command is complicated so we have some comments to explain it
     CustomLogger.recordOutput("ActiveCommands/FaceHubCommand", true)
-    CustomLogger.recordOutput("FaceHubCommand/currentRotation", drivetrain.rotation.inDegrees)
 
+    // Calculate the distance to the HUB
     val distanceToHubX = HUB_TRANSLATION.x - drivetrain.pose.translation.x
     val distanceToHubY = HUB_TRANSLATION.y - drivetrain.pose.translation.y
     val distanceToHubMag =
       sqrt(distanceToHubX.inMeters.pow(2) + distanceToHubY.inMeters.pow(2)).meters
 
     CustomLogger.recordOutput("FaceHubCommand/distanceToHubMag", distanceToHubMag.inMeters)
+    CustomLogger.recordOutput("FaceHubCommand/launchSpeedZ", launchSpeedZ.inMetersPerSecond)
 
-    CustomLogger.recordOutput("FaceHubCommand/templaunchspeedz", templaunchspeedz.inMetersPerSecond)
+    // Simple linear regression model to calculate the launch speed
+    // based off the distance to the hub. Numbers are taken from CAD.
+    launchSpeedZ = (1.00805 * distanceToHubMag.inMeters + 4.42681).meters.perSecond
 
-    templaunchspeedz = (1.00805 * distanceToHubMag.inMeters + 4.42681).meters.perSecond
-
-    // quadratic formula for t
+    // Solve the kinematics formula for t (time)
     val a = -Constants.Universal.gravity.inMetersPerSecondPerSecond / 2.0
-    val b = templaunchspeedz.inMetersPerSecond
+    val b = launchSpeedZ.inMetersPerSecond
     val c = SHOOTER_HEIGHT.inMeters - HUB_HEIGHT.inMeters
-    val TOF =
+    val timeOfFlight =
       max(
         ((-b - sqrt(b.pow(2.0) - 4.0 * a * c)) / (2.0 * a)),
         ((-b + sqrt(b.pow(2.0) - 4.0 * a * c)) / (2.0 * a))
       )
         .seconds
 
+    // Get field-relative drivetrain velocity, and convert it into a vector.
     val fieldSpeeds =
       ChassisSpeeds(
-        edu.wpi.first.math.kinematics.ChassisSpeeds.fromRobotRelativeSpeeds(
+        WPIChassisSpeeds.fromRobotRelativeSpeeds(
           drivetrain.chassisSpeeds.chassisSpeedsWPILIB, drivetrain.rotation.inRotation2ds
         )
       )
@@ -151,12 +156,18 @@ class FaceHubCommand(
           doubleArrayOf(fieldSpeeds.vx.inMetersPerSecond, fieldSpeeds.vy.inMetersPerSecond)
         )
       )
+
     val robotTHubVector =
       Vector(Matrix(N2(), N1(), doubleArrayOf(distanceToHubX.inMeters, distanceToHubY.inMeters)))
 
+    // The drive vector is split into two (basis) vectors, one in the
+    // direction of the hub and one orthogonal to it.
     val parallelVector = driveVector.projection(robotTHubVector)
     val perpendicularVel = driveVector.minus(parallelVector)
-    val ballDistanceOffset = (perpendicularVel.times(TOF.inSeconds))
+
+    // The distance the ball travels while in the air
+    val ballDistanceOffset = (perpendicularVel.times(timeOfFlight.inSeconds))
+
     CustomLogger.recordOutput(
       "FaceHubCommand/shouldAimIfAccountingForBall",
       Pose2d(HUB_TRANSLATION, 0.radians)
@@ -171,6 +182,10 @@ class FaceHubCommand(
         )
         .pose2d
     )
+
+    // The wanted rotation is recieved by offsetting the usual angle
+    // (the slope connecting the robot and the HUB) by the offset the
+    // ball would travel in the air.
     val wantedRot =
       atan2(
         distanceToHubY.inMeters - ballDistanceOffset.get(1),
@@ -178,24 +193,23 @@ class FaceHubCommand(
       )
         .radians
 
+    // PID and clamping of the calculated theta velocity
     val thetavel = thetaPID.calculate(drivetrain.rotation, wantedRot)
-    val ff = thetaPID.error * DrivetrainConstants.PID.SIM_HUB_PID_KV
-
-    val appliedThetavel = clamp(thetavel + ff, -90.degrees.perSecond, 90.degrees.perSecond)
+    val appliedThetavel = thetavel // clamp(thetavel, -90.degrees.perSecond, 90.degrees.perSecond)
 
     CustomLogger.recordOutput("FaceHubCommand/thetaveldps", appliedThetavel.inDegreesPerSecond)
     CustomLogger.recordOutput("FaceHubCommand/thetaerror", thetaPID.error.inDegrees)
-    CustomLogger.recordOutput("FaceHubCommand/tof", TOF.inSeconds)
-    val speed = driver.driveSpeedClampedSupplier(driveX, driveY, slowMode)
-    val speedMagnitude =
-      sqrt(speed.first.inMetersPerSecond.pow(2) + speed.second.inMetersPerSecond.pow(2))
+    CustomLogger.recordOutput("FaceHubCommand/tof", timeOfFlight.inSeconds)
 
-    var speedX: LinearVelocity = speed.first
-    var speedY: LinearVelocity = speed.second
+    // Take the drivers speed being inputted, and clamp the magnitude
+    // of the drive vector to < MAX_VELOCITY_RADIUS meters per second
+    var (speedX, speedY) = driver.driveSpeedClampedSupplier(driveX, driveY, slowMode)
+    val speedMagnitude = sqrt(speedX.inMetersPerSecond.pow(2) + speedY.inMetersPerSecond.pow(2))
 
-    if (speedMagnitude > 1.5) {
-      speedX /= speedMagnitude * 1.5
-      speedY /= speedMagnitude * 1.5
+    if (speedMagnitude > MAX_VELOCITY_RADIUS) {
+      // Convert to unit vector and then * MAX_VELOCITY_RADIUS
+      speedX = speedX / speedMagnitude * MAX_VELOCITY_RADIUS
+      speedY = speedY / speedMagnitude * MAX_VELOCITY_RADIUS
     }
 
     CustomLogger.recordOutput(
@@ -204,21 +218,18 @@ class FaceHubCommand(
 
     drivetrain.runSpeeds(
       ChassisSpeeds.fromFieldRelativeSpeeds(
-        speed.first / (speedMagnitude / 1.5),
-        speed.second / (speedMagnitude / 1.5),
-        appliedThetavel,
-        drivetrain.pose.rotation
-      ),
-      flipIfRed = true
+        speedX, speedY, appliedThetavel, drivetrain.pose.rotation
+      )
     )
 
-    hasAligned = thetaPID.error.absoluteValue < 2.5.degrees
+    hasAligned = thetaPID.error.absoluteValue < 6.7.degrees
 
     CustomLogger.recordOutput("FaceHubCommand/hasAligned", hasAligned)
 
-    // ///
-
-    if (RobotBase.isSimulation() && Clock.fpgaTime.inSeconds % 1.0 < 0.04)
+    if (RobotBase.isSimulation() &&
+      (hasAligned || distanceToHubMag < 2.meters) &&
+      Clock.fpgaTime.inSeconds % .25 < 0.05
+    )
       SimulatedArena.getInstance()
         .addGamePieceProjectile(
           GamePieceProjectile(
@@ -235,22 +246,20 @@ class FaceHubCommand(
             WPITranslation2d(
               fieldSpeeds.vx.inMetersPerSecond, fieldSpeeds.vy.inMetersPerSecond
             ) +
-              WPITranslation2d(templaunchspeedz.inMetersPerSecond * 20.degrees.tan, 0.0)
+              WPITranslation2d(launchSpeedZ.inMetersPerSecond * 20.degrees.tan, 0.0)
                 .rotateBy(drivetrain.rotation.inRotation2ds) -
               WPITranslation2d(parallelVector.get(0), parallelVector.get(1)),
             SHOOTER_HEIGHT.inMeters,
-            templaunchspeedz.inMetersPerSecond,
+            launchSpeedZ.inMetersPerSecond,
             Rotation3d.kZero
           )
         )
 
     CustomLogger.recordOutput(
       "FaceHubCommand/3dBallVelocity",
-      edu.wpi.first.math.geometry.Translation2d(
-        fieldSpeeds.vx.inMetersPerSecond, fieldSpeeds.vy.inMetersPerSecond
-      ) +
-        edu.wpi.first.math.geometry.Translation2d(
-          (templaunchspeedz.inMetersPerSecond / 70.degrees.sin) * 20.degrees.cos, 0.0
+      WPITranslation2d(fieldSpeeds.vx.inMetersPerSecond, fieldSpeeds.vy.inMetersPerSecond) +
+        WPITranslation2d(
+          (launchSpeedZ.inMetersPerSecond / 70.degrees.sin) * 20.degrees.cos, 0.0
         )
           .rotateBy(drivetrain.rotation.inRotation2ds)
     )
