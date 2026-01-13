@@ -51,6 +51,8 @@ import kotlin.math.pow
 import kotlin.math.sqrt
 import edu.wpi.first.math.geometry.Translation2d as WPITranslation2d
 import edu.wpi.first.math.kinematics.ChassisSpeeds as WPIChassisSpeeds
+import kotlin.math.absoluteValue
+import kotlin.math.min
 
 /** @author Nathan Arega, Ryan Chung */
 class FaceHubCommand(
@@ -63,6 +65,7 @@ class FaceHubCommand(
   // TODO replace with real
   private var launchSpeedZ = 10.meters.perSecond // mps
   private val SHOOTER_HEIGHT = 14.876.inches
+  private val SHOOTER_ANGLE = 70.degrees
   private val HUB_HEIGHT = 72.inches
   private val thetaPID: PIDController<Radian, Velocity<Radian>>
   private var HUB_TRANSLATION: Translation2d =
@@ -123,23 +126,61 @@ class FaceHubCommand(
     val distanceToHubMag =
       sqrt(distanceToHubX.inMeters.pow(2) + distanceToHubY.inMeters.pow(2)).meters
 
-    CustomLogger.recordOutput("FaceHubCommand/distanceToHubMag", distanceToHubMag.inMeters)
-    CustomLogger.recordOutput("FaceHubCommand/launchSpeedZ", launchSpeedZ.inMetersPerSecond)
-
-    // Simple linear regression model to calculate the launch speed
-    // based off the distance to the hub. Numbers are taken from CAD.
-    launchSpeedZ = (1.00805 * distanceToHubMag.inMeters + 4.42681).meters.perSecond
-
-    // Solve the kinematics formula for t (time)
-    val a = -Constants.Universal.gravity.inMetersPerSecondPerSecond / 2.0
-    val b = launchSpeedZ.inMetersPerSecond
-    val c = SHOOTER_HEIGHT.inMeters - HUB_HEIGHT.inMeters
-    val timeOfFlight =
-      max(
-        ((-b - sqrt(b.pow(2.0) - 4.0 * a * c)) / (2.0 * a)),
-        ((-b + sqrt(b.pow(2.0) - 4.0 * a * c)) / (2.0 * a))
-      )
-        .seconds
+    /**
+     * Time for the math...
+     *
+     * We must solve for v_launch, but that depends on the distance the ball
+     * will be displaced by the drivetrain velocity times the time of
+     * flight. The time of flight is, unfortunately, also based off of
+     * v_launch. We combine the following kinematics equations to derive
+     * v_launch independently from time of flight.
+     *
+     * Variables:
+     * - v_launch   = Launch velocity, represented as a number (vector) in 2D.
+     *                Multiply by SHOOTER_ANGLE.cos or SHOOTER_ANGLE.sin for
+     *                v_launch_x or v_launch_y.
+     * - h          = Height of the hub.
+     * - s          = Height of the shooter.
+     * - d          = Distance robotTHub.
+     * - v_parallel = Movement of drivetrain, orthogonal to the robotTHub vector.
+     *
+     * From the following kinematics equations:
+     *  - d = (v_launch * SHOOTER_ANGLE.cos + v_parallel) * t   (1)
+     *  - h = s + (v_launch * SHOOTER_ANGLE.sin) * t + (-g / 2) * t^2   (2)
+     *
+     *  Multiply (1) by (v_launch * SHOOTER_ANGLE.sin)
+     *  - (v_launch * SHOOTER_ANGLE.sin) * d = (v_launch * SHOOTER_ANGLE.sin) * (v_launch * SHOOTER_ANGLE.cos + v_parallel) * t   (3)
+     *
+     *  From (2):
+     *  - (v_launch * SHOOTER_ANGLE.sin) * t = (s - h) + (g / 2) * t^2   (4)
+     *
+     *  Plug (4) into (3):
+     *  - (v_launch * SHOOTER_ANGLE.sin) * d = ((s - h) + (g / 2) * t^2) * (v_launch * SHOOTER_ANGLE.cos + v_parallel)   (5)
+     *
+     *  From (1):
+     *  - t = d / (v_launch * SHOOTER_ANGLE.cos + v_parallel)   (6)
+     *
+     *  Substitute (6) into (5):
+     *  - (v_launch * SHOOTER_ANGLE.sin) * d = = ((s - h) + (g / 2) * (d / (v_launch * SHOOTER_ANGLE.cos + v_parallel))^2) * (v_launch * SHOOTER_ANGLE.cos + v_parallel)
+     *  - (v_launch * SHOOTER_ANGLE.sin) * d = (s - h) * (v_launch * SHOOTER_ANGLE.cos + v_parallel) + g * d^2 / (2 * (v_launch * SHOOTER_ANGLE.cos + v_p))   (7)
+     *
+     *  Multiply by (v_launch * SHOOTER_ANGLE.cos + v_parallel):
+     *  - v_launch * SHOOTER_ANGLE.sin * d * (v_launch * SHOOTER_ANGLE.cos + v_parallel) = (s - h) * (v_launch * SHOOTER_ANGLE.cos + v_parallel)^2 + g * d^2 / 2
+     *  - 0 = (s - h) * (v_launch * SHOOTER_ANGLE.cos + v_parallel)^2 + g * d^2 / 2 - v_launch * SHOOTER_ANGLE.sin * d * (v_launch * SHOOTER_ANGLE.cos + v_parallel)
+     *  - 0 = (s - h) * (v_launch * SHOOTER_ANGLE.cos)^2 + (s - h) * v_parallel^2 + (s - h) * (2 * v_launch * SHOOTER_ANGLE.cos * v_parallel) + g * d^2 / 2 - v_launch^2 * SHOOTER_ANGLE.sin * d * SHOOTER_ANGLE.cos - v_launch * SHOOTER_ANGLE.sin * d * v_parallel
+     *  - 0 =
+     *        (s - h) * (SHOOTER_ANGLE.cos)^2 * v_launch^2                (Quadratic)
+     *        - SHOOTER_ANGLE.sin * d * SHOOTER_ANGLE.cos * v_launch^2    (Quadratic term)
+     *        + (s - h) * 2 * SHOOTER_ANGLE.cos * v_parallel * v_launch   (Linear term)
+     *        - SHOOTER_ANGLE.sin * d * v_parallel * v_launch             (Linear term)
+     *        + (s - h) * v_parallel^2                                    (Constant)
+     *        + g * d^2 / 2                                               (Constant)
+     *
+     *  We know have a quadratic in terms of v_launch.
+     *  - A = (s - h) * (SHOOTER_ANGLE.cos)^2 - SHOOTER_ANGLE.sin * SHOOTER_ANGLE.cos * d
+     *  - B = 2 * (s - h) * SHOOTER_ANGLE.cos * v_parallel - SHOOTER_ANGLE.sin * d * v_parallel
+     *  - C = (s - h) * v_parallel^2 + g * d^2 / 2
+     */
 
     // Get field-relative drivetrain velocity, and convert it into a vector.
     val fieldSpeeds =
@@ -164,6 +205,37 @@ class FaceHubCommand(
     // direction of the hub and one orthogonal to it.
     val parallelVector = driveVector.projection(robotTHubVector)
     val perpendicularVel = driveVector.minus(parallelVector)
+    // Gives the magnitude of the parallel vector, but signed
+    val parallelScalar = driveVector.dot(robotTHubVector) / distanceToHubMag.inMeters
+
+    val v_launch_a = (SHOOTER_HEIGHT.inMeters - HUB_HEIGHT.inMeters) * SHOOTER_ANGLE.cos.pow(2) - SHOOTER_ANGLE.sin * SHOOTER_ANGLE.cos * distanceToHubMag.inMeters
+    val v_launch_b = 2 * (SHOOTER_HEIGHT.inMeters - HUB_HEIGHT.inMeters) * SHOOTER_ANGLE.cos * parallelScalar - SHOOTER_ANGLE.sin * distanceToHubMag.inMeters * parallelScalar
+    val v_launch_c = (SHOOTER_HEIGHT.inMeters - HUB_HEIGHT.inMeters) * parallelScalar.pow(2) + Constants.Universal.gravity.inMetersPerSecondPerSecond * distanceToHubMag.inMeters.pow(2) / 2.0
+
+    val v_launch_res_1 = (-v_launch_b + sqrt(v_launch_b.pow(2) - 4.0 * v_launch_a * v_launch_c)) / (2 * v_launch_a)
+    val v_launch_res_2 = (-v_launch_b - sqrt(v_launch_b.pow(2) - 4.0 * v_launch_a * v_launch_c)) / (2 * v_launch_a)
+
+//    val launchSpeed = when {
+//      v_launch_res_1 > 0 && v_launch_res_2 > 0 -> min(v_launch_res_1, v_launch_res_2)
+//      v_launch_res_1 > 0 -> v_launch_res_1
+//      else -> v_launch_res_2
+//    }.meters.perSecond
+
+    val launchSpeed = max(v_launch_res_1, v_launch_res_2).meters.perSecond
+
+    val launchSpeedZ = launchSpeed * SHOOTER_ANGLE.sin
+    val launchSpeedField = launchSpeed * SHOOTER_ANGLE.cos
+
+
+    CustomLogger.recordOutput("FaceHubCommand/distanceToHubMag", distanceToHubMag.inMeters)
+    CustomLogger.recordOutput("FaceHubCommand/launchSpeedZ", launchSpeedZ.inMetersPerSecond)
+    /*
+    // Simple linear regression model to calculate the launch speed
+    // based off the distance to the hub. Numbers are taken from CAD.
+    launchSpeedZ = (1.00805 * distanceToHubMag.inMeters + 4.42681).meters.perSecond
+     */
+    // Solve the kinematics formula for t (time)
+    val timeOfFlight = //TODO IMLPEMENT TMR
 
     // The distance the ball travels while in the air
     val ballDistanceOffset = (perpendicularVel.times(timeOfFlight.inSeconds))
@@ -246,23 +318,13 @@ class FaceHubCommand(
             WPITranslation2d(
               fieldSpeeds.vx.inMetersPerSecond, fieldSpeeds.vy.inMetersPerSecond
             ) +
-              WPITranslation2d(launchSpeedZ.inMetersPerSecond * 20.degrees.tan, 0.0)
-                .rotateBy(drivetrain.rotation.inRotation2ds) -
-              WPITranslation2d(parallelVector.get(0), parallelVector.get(1)),
+              WPITranslation2d(launchSpeedField.inMetersPerSecond, 0.0)
+                .rotateBy(drivetrain.rotation.inRotation2ds),
             SHOOTER_HEIGHT.inMeters,
             launchSpeedZ.inMetersPerSecond,
             Rotation3d.kZero
           )
         )
-
-    CustomLogger.recordOutput(
-      "FaceHubCommand/3dBallVelocity",
-      WPITranslation2d(fieldSpeeds.vx.inMetersPerSecond, fieldSpeeds.vy.inMetersPerSecond) +
-        WPITranslation2d(
-          (launchSpeedZ.inMetersPerSecond / 70.degrees.sin) * 20.degrees.cos, 0.0
-        )
-          .rotateBy(drivetrain.rotation.inRotation2ds)
-    )
   }
 
   override fun isFinished(): Boolean {
