@@ -359,11 +359,8 @@ class Vision(vararg cameras: CameraIO, val poseSupplier: Supplier<Pose2d>) : Sub
                   .translation
 
               when (objTargets[idx].detectedObjectClassID) {
-                VisionConstants.OBJECT_CLASS.CORAL.id -> {
-                  objectsDetected[VisionConstants.OBJECT_CLASS.CORAL.id].add(robotTObject)
-                }
-                VisionConstants.OBJECT_CLASS.ALGAE.id -> {
-                  objectsDetected[VisionConstants.OBJECT_CLASS.ALGAE.id].add(robotTObject)
+                VisionConstants.OBJECT_CLASS.FUEL.id -> {
+                  objectsDetected[VisionConstants.OBJECT_CLASS.FUEL.id].add(robotTObject)
                 }
               }
             }

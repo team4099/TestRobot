@@ -88,6 +88,12 @@ dependencies {
 	implementation 'com.google.code.gson:gson:2.10.1'
 	implementation "io.javalin:javalin:5.3.2"
 	implementation "gov.nist.math:jama:1.0.3"
+	implementation("com.pathplanner.lib:PathplannerLib-java:2025.2.3")
+
+	implementation ("org.tribuo:tribuo-all:4.3.2@pom") {
+		transitive = true      // for build.gradle (Groovy)
+		// isTransitive = true // for build.gradle.kts (Kotlin)
+	}
 }
 
 // Simulation configuration (e.g. environment variables).

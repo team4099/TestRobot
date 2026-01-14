@@ -141,7 +141,6 @@ object VisionConstants {
   val FIELD_POSE_RESET_DISTANCE_THRESHOLD = 5.meters
 
   enum class OBJECT_CLASS(val id: Int, val mapleSimType: String?) {
-    ALGAE(0, "Algae"),
-    CORAL(1, "Coral")
+    FUEL(0, "Fuel")
   }
 }

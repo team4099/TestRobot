@@ -4,6 +4,7 @@ import com.ctre.phoenix6.signals.NeutralModeValue
 import com.team4099.robot2025.auto.AutonomousSelector
 import com.team4099.robot2025.commands.drivetrain.FaceHubCommand
 import com.team4099.robot2025.commands.drivetrain.ResetGyroYawCommand
+import com.team4099.robot2025.commands.drivetrain.TargetObjectCommand
 import com.team4099.robot2025.commands.drivetrain.TeleopDriveCommand
 import com.team4099.robot2025.config.ControlBoard
 import com.team4099.robot2025.config.constants.Constants
@@ -125,6 +126,12 @@ object RobotContainer {
         { ControlBoard.slowMode },
         Test()
       )
+    )
+    ControlBoard.testCommand2.whileTrue(
+      TargetObjectCommand(drivetrain,
+        vision,
+        VisionConstants.OBJECT_CLASS.FUEL
+        )
     )
   }
 
