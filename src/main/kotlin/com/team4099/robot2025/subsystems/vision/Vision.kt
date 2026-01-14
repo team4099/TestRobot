@@ -379,14 +379,6 @@ class Vision(vararg cameras: CameraIO, val poseSupplier: Supplier<Pose2d>) : Sub
                   }
               )
             }
-
-            objectsDetected.forEach {
-              it.addAll(
-                SimulatedArena.getInstance().getGamePiecesByType("CoralAlgaeStack").map { pose ->
-                  Transform2d(poseSupplier.get(), Pose2d(pose.pose3d.toPose2d())).translation
-                }
-              )
-            }
           }
 
           for (objects in VisionConstants.OBJECT_CLASS.values()) {

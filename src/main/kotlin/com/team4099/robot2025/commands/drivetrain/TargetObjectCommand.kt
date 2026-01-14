@@ -158,11 +158,14 @@ class TargetObjectCommand(
     var robotTObject: Translation2d
     val lastUpdate = vision.lastObjectVisionUpdate[targetObjectClass.id]
     if (RobotBase.isSimulation()) {
-      var fuelTranslations = vision.objectsDetected[1]
+      var fuelTranslations = vision.objectsDetected[0]
+      println(fuelTranslations)
+      if (fuelTranslations.isEmpty()) return
       val target =
         ClusterScore.calculateClusterScores(
           drivetrain.pose.pose2d, fuelTranslations.map { it.translation2d }
         )
+      CustomLogger.recordOutput("TargetObjectCommand/Target", target)
       robotTObject = Transform2d(drivetrain.pose, Pose2d(target)).translation
     } else {
       robotTObject = lastUpdate.robotTObject

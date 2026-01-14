@@ -84,7 +84,7 @@ object RobotContainer {
         vision =
           Vision(
             CameraIOPVSim(
-              CameraIO.DetectionPipeline.APRIL_TAG,
+              CameraIO.DetectionPipeline.OBJECT_DETECTION,
               "raven1",
               Transform3d(),
               drivetrain::addVisionMeasurement,
