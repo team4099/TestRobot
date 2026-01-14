@@ -128,10 +128,7 @@ object RobotContainer {
       )
     )
     ControlBoard.testCommand2.whileTrue(
-      TargetObjectCommand(drivetrain,
-        vision,
-        VisionConstants.OBJECT_CLASS.FUEL
-        )
+      TargetObjectCommand(drivetrain, vision, VisionConstants.OBJECT_CLASS.FUEL)
     )
   }
 
@@ -139,8 +136,7 @@ object RobotContainer {
 
   fun mapTunableCommands() {}
 
-  fun getAutonomousCommand() =
-    AutonomousSelector.getCommand(drivetrain, vision)
+  fun getAutonomousCommand() = AutonomousSelector.getCommand(drivetrain, vision)
 
   fun resetSimulationField() {
     if (!RobotBase.isSimulation()) return

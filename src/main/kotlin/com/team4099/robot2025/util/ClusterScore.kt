@@ -19,9 +19,9 @@ import kotlin.math.pow
 import kotlin.math.sqrt
 
 /**
- * Clusters individual Translation2d object detections using HDBSCAN,
- * scores clusters based on compactness and distance to the robot,
- * and returns the Pose2d centroid of the highest scoring cluster.
+ * Clusters individual Translation2d object detections using HDBSCAN, scores clusters based on
+ * compactness and distance to the robot, and returns the Pose2d centroid of the highest scoring
+ * cluster.
  *
  * Intended for scoring gamepiece detections from vision.
  *
@@ -39,8 +39,7 @@ class ClusterScore {
 
     /* ---------------- Geometry helpers ---------------- */
 
-    private fun distance(a: Translation2d, b: Translation2d): Double =
-      a.getDistance(b)
+    private fun distance(a: Translation2d, b: Translation2d): Double = a.getDistance(b)
 
     private fun centroid(points: List<Translation2d>): Pose2d {
       val n = points.size.toDouble()
@@ -57,17 +56,12 @@ class ClusterScore {
 
     /* ---------------- Tribuo helpers ---------------- */
 
-    private fun createDataset(
-      points: List<Translation2d>
-    ): MutableDataset<ClusterID> {
+    private fun createDataset(points: List<Translation2d>): MutableDataset<ClusterID> {
 
       val factory = ClusteringFactory()
       val dataset =
         MutableDataset(
-          SimpleDataSourceProvenance(
-            "Ohio Aurablud Translation2d Dataset",
-            LabelFactory()
-          ),
+          SimpleDataSourceProvenance("Ohio Aurablud Translation2d Dataset", LabelFactory()),
           factory
         )
 
@@ -110,25 +104,23 @@ class ClusterScore {
 
       val robotTranslation = robotPose.translation
 
-      return clusters.map { (id, points) ->
-        val cPose = centroid(points)
-        val spread = clusterSpread(points)
-        val distToRobot = distance(cPose.translation, robotTranslation)
+      return clusters
+        .map { (id, points) ->
+          val cPose = centroid(points)
+          val spread = clusterSpread(points)
+          val distToRobot = distance(cPose.translation, robotTranslation)
 
-        val score =
-          compactnessWeight / (spread + epsilon) +
-              distanceWeight / (distToRobot + epsilon)
+          val score =
+            compactnessWeight / (spread + epsilon) + distanceWeight / (distToRobot + epsilon)
 
-        ClusterScoreData(id, score, spread, distToRobot)
-      }.sortedByDescending { it.score }
+          ClusterScoreData(id, score, spread, distToRobot)
+        }
+        .sortedByDescending { it.score }
     }
 
     /* ---------------- Public API ---------------- */
 
-    fun calculateClusterScores(
-      robotPose: Pose2d,
-      points: List<Translation2d>
-    ): Pose2d {
+    fun calculateClusterScores(robotPose: Pose2d, points: List<Translation2d>): Pose2d {
 
       require(points.isNotEmpty()) { "Point list must not be empty" }
 
@@ -146,10 +138,9 @@ class ClusterScore {
       val model = trainer.train(dataset)
 
       val clusters =
-        collectClusters(model, points)
-          .filterValues {
-            it.size >= Constants.ClusterScore.MIN_SCORE_CLUSTER_SIZE
-          }
+        collectClusters(model, points).filterValues {
+          it.size >= Constants.ClusterScore.MIN_SCORE_CLUSTER_SIZE
+        }
 
       // Fallback: all noise
       if (clusters.isEmpty()) {

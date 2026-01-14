@@ -1,9 +1,11 @@
+package com.team4099.robot2025.commands.characterization
+
 import com.team4099.robot2025.subsystems.drivetrain.Drive
 import edu.wpi.first.wpilibj.Timer
 import edu.wpi.first.wpilibj2.command.Command
 import java.text.DecimalFormat
 import java.text.NumberFormat
-import java.util.*
+import java.util.LinkedList
 
 class FeedforwardCharacterizationCommand(private val drive: Drive) : Command() {
   private val velocitySamples: MutableList<Double?> = LinkedList<Double?>()
@@ -16,7 +18,7 @@ class FeedforwardCharacterizationCommand(private val drive: Drive) : Command() {
     addRequirements(drive)
   }
 
-   override fun initialize() {
+  override fun initialize() {
     velocitySamples.clear()
     voltageSamples.clear()
 
@@ -25,7 +27,7 @@ class FeedforwardCharacterizationCommand(private val drive: Drive) : Command() {
     delayComplete = false
   }
 
-   override fun execute() {
+  override fun execute() {
     // Initial delay to allow modules to orient
     if (!delayComplete) {
       drive.runCharacterization(0.0)
@@ -44,7 +46,7 @@ class FeedforwardCharacterizationCommand(private val drive: Drive) : Command() {
     voltageSamples.add(voltage)
   }
 
-   override fun end(interrupted: Boolean) {
+  override fun end(interrupted: Boolean) {
     drive.runCharacterization(0.0)
 
     val n = velocitySamples.size

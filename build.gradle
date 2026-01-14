@@ -90,10 +90,11 @@ dependencies {
 	implementation "gov.nist.math:jama:1.0.3"
 	implementation("com.pathplanner.lib:PathplannerLib-java:2025.2.3")
 
-	implementation ("org.tribuo:tribuo-all:4.3.2@pom") {
-		transitive = true      // for build.gradle (Groovy)
-		// isTransitive = true // for build.gradle.kts (Kotlin)
-	}
+	implementation "org.tribuo:tribuo-core:4.3.2"
+	implementation "org.tribuo:tribuo-classification-core:4.3.2"
+	implementation "org.tribuo:tribuo-clustering-core:4.3.2"
+	implementation "org.tribuo:tribuo-clustering-hdbscan:4.3.2"
+	implementation "org.tribuo:tribuo-math:4.3.2"
 }
 
 // Simulation configuration (e.g. environment variables).

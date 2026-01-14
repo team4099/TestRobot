@@ -4,7 +4,6 @@ import com.team4099.robot2025.auto.mode.ExamplePathAuto
 import com.team4099.robot2025.auto.mode.SysID
 import com.team4099.robot2025.subsystems.drivetrain.Drive
 import com.team4099.robot2025.subsystems.vision.Vision
-import com.team4099.robot2025.util.AllianceFlipUtil
 import edu.wpi.first.networktables.GenericEntry
 import edu.wpi.first.wpilibj.shuffleboard.BuiltInWidgets
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard
@@ -48,11 +47,8 @@ object AutonomousSelector {
 
     when (mode) {
       AutonomousMode.EXAMPLE_AUTO ->
-        return WaitCommand(waitTime.inSeconds)
-          .andThen(ExamplePathAuto(drivetrain))
-      AutonomousMode.SYSID ->
-        return WaitCommand(waitTime.inSeconds)
-          .andThen(SysID(drivetrain))
+        return WaitCommand(waitTime.inSeconds).andThen(ExamplePathAuto(drivetrain))
+      AutonomousMode.SYSID -> return WaitCommand(waitTime.inSeconds).andThen(SysID(drivetrain))
       else -> return InstantCommand()
     }
   }

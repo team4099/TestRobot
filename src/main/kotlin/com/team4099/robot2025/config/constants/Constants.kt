@@ -66,8 +66,8 @@ object Constants {
     const val BLUE_DOUBLE_SUBSTATION_ID = 4
   }
 
-  object ClusterScore{
-    val COMPACTNESS_WEIGHT =1.0
+  object ClusterScore {
+    val COMPACTNESS_WEIGHT = 1.0
     val DISTANCE_WEIGHT = 1.0
     val MIN_SCORE_CLUSTER_SIZE = 1.0
   }

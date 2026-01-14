@@ -1,14 +1,12 @@
 package com.team4099.robot2025.commands.drivetrain
 
 import com.team4099.lib.hal.Clock
-import com.team4099.robot2025.config.constants.Constants
 import com.team4099.robot2025.config.constants.DrivetrainConstants
 import com.team4099.robot2025.config.constants.VisionConstants
 import com.team4099.robot2025.subsystems.drivetrain.Drive
 import com.team4099.robot2025.subsystems.vision.Vision
 import com.team4099.robot2025.util.ClusterScore
 import com.team4099.robot2025.util.CustomLogger
-import edu.wpi.first.math.geometry.Pose3d
 import edu.wpi.first.units.Units.Kilograms
 import edu.wpi.first.units.Units.Meters
 import edu.wpi.first.wpilibj.DriverStation
@@ -17,7 +15,6 @@ import edu.wpi.first.wpilibj2.command.Command
 import org.dyn4j.geometry.Circle
 import org.ironmaple.simulation.SimulatedArena
 import org.ironmaple.simulation.gamepieces.GamePieceOnFieldSimulation
-import org.ironmaple.simulation.gamepieces.GamePieceProjectile
 import org.team4099.lib.controller.PIDController
 import org.team4099.lib.geometry.Pose2d
 import org.team4099.lib.geometry.Transform2d
@@ -91,8 +88,7 @@ class TargetObjectCommand(
 
       data class Point(val x: Double, val y: Double)
 
-      fun dist(a: Point, b: Point): Double =
-        kotlin.math.hypot(a.x - b.x, a.y - b.y)
+      fun dist(a: Point, b: Point): Double = kotlin.math.hypot(a.x - b.x, a.y - b.y)
 
       val allPlacedPoints = mutableListOf<Point>()
 
@@ -103,8 +99,7 @@ class TargetObjectCommand(
 
         val clusterCenter =
           Point(
-            robotPose.x + r * kotlin.math.cos(theta),
-            robotPose.y + r * kotlin.math.sin(theta)
+            robotPose.x + r * kotlin.math.cos(theta), robotPose.y + r * kotlin.math.sin(theta)
           )
 
         // Random cluster size (tweak bounds if desired)
@@ -127,10 +122,7 @@ class TargetObjectCommand(
             )
 
           // Ensure no touching ANY existing fuel
-          val valid =
-            (clusterPoints + allPlacedPoints).all {
-              dist(it, candidate) >= minSpacing
-            }
+          val valid = (clusterPoints + allPlacedPoints).all { dist(it, candidate) >= minSpacing }
 
           if (valid) {
             clusterPoints.add(candidate)
@@ -152,9 +144,7 @@ class TargetObjectCommand(
                 0.4
               ),
               edu.wpi.first.math.geometry.Pose2d(
-                p.x,
-                p.y,
-                edu.wpi.first.math.geometry.Rotation2d()
+                p.x, p.y, edu.wpi.first.math.geometry.Rotation2d()
               )
             )
           )
@@ -162,22 +152,23 @@ class TargetObjectCommand(
       }
     }
 
-
     CustomLogger.recordOutput("TargetObjectCommand/lastInitialized", Clock.fpgaTime.inSeconds)
   }
   override fun execute() {
     var robotTObject: Translation2d
     val lastUpdate = vision.lastObjectVisionUpdate[targetObjectClass.id]
-    if(RobotBase.isSimulation()) {
+    if (RobotBase.isSimulation()) {
       var fuelTranslations = vision.objectsDetected[1]
-      val target = ClusterScore.calculateClusterScores(drivetrain.pose.pose2d ,fuelTranslations.map{it.translation2d})
+      val target =
+        ClusterScore.calculateClusterScores(
+          drivetrain.pose.pose2d, fuelTranslations.map { it.translation2d }
+        )
       robotTObject = Transform2d(drivetrain.pose, Pose2d(target)).translation
-    }else{
-       robotTObject = lastUpdate.robotTObject
+    } else {
+      robotTObject = lastUpdate.robotTObject
     }
 
     CustomLogger.recordOutput("ActiveCommands/TargetObjectCommand", true)
-
 
     val exists = (robotTObject != Translation2d())
 
@@ -195,14 +186,13 @@ class TargetObjectCommand(
 
     val thetavel =
       thetaPID.calculate(drivetrain.pose.rotation, setpointRotation) *
-          if (RobotBase.isReal()) -1.0 else 1.0
+        if (RobotBase.isReal()) -1.0 else 1.0
 
     CustomLogger.recordOutput("TargetObjectCommand/thetaveldps", thetavel.inDegreesPerSecond)
     CustomLogger.recordOutput("TargetObjectCommand/thetaerror", thetaPID.error.inDegrees)
     CustomLogger.recordOutput("TargetObjectCommand/hasThetaAligned", hasThetaAligned)
 
-    if ((hasThetaAligned || thetaPID.error.absoluteValue < 8.36.degrees)
-    ) {
+    if ((hasThetaAligned || thetaPID.error.absoluteValue < 8.36.degrees)) {
       hasThetaAligned = true
 
       drivetrain.runSpeeds(

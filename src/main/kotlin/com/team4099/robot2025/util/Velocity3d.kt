@@ -1,29 +1,29 @@
 package com.team4099.robot2025.util
 
-import edu.wpi.first.math.geometry.Translation2d
 import edu.wpi.first.math.geometry.Translation3d
+import org.team4099.lib.geometry.Quaternion
+import org.team4099.lib.geometry.Rotation3d
 import org.team4099.lib.units.LinearVelocity
 import org.team4099.lib.units.base.meters
 import org.team4099.lib.units.derived.Angle
 import org.team4099.lib.units.derived.angle
-import org.team4099.lib.units.derived.cos
-import org.team4099.lib.units.derived.sin
+import org.team4099.lib.units.derived.radians
 import org.team4099.lib.units.inMetersPerSecond
 import org.team4099.lib.units.perSecond
-import kotlin.math.hypot
 import kotlin.math.pow
 import kotlin.math.sqrt
-import org.team4099.lib.geometry.Quaternion
-import org.team4099.lib.geometry.Rotation3d
-import org.team4099.lib.units.derived.radians
 
 data class Velocity3d(val x: LinearVelocity, val y: LinearVelocity, val z: LinearVelocity) {
 
   constructor() : this(0.0.meters.perSecond, 0.0.meters.perSecond, 0.0.meters.perSecond)
 
-  val velocity3dWPIlib = Translation3d(x.inMetersPerSecond, y.inMetersPerSecond, z.inMetersPerSecond)
+  val velocity3dWPIlib =
+    Translation3d(x.inMetersPerSecond, y.inMetersPerSecond, z.inMetersPerSecond)
 
-  val magnitude = sqrt(x.inMetersPerSecond.pow(2) + y.inMetersPerSecond.pow(2) + z.inMetersPerSecond.pow(2)).meters.perSecond
+  val magnitude =
+    sqrt(x.inMetersPerSecond.pow(2) + y.inMetersPerSecond.pow(2) + z.inMetersPerSecond.pow(2))
+      .meters
+      .perSecond
 
   val heading: Angle = velocity3dWPIlib.toTranslation2d().angle.angle
 
@@ -47,7 +47,7 @@ data class Velocity3d(val x: LinearVelocity, val y: LinearVelocity, val z: Linea
     return Velocity3d(x * -1, y * -1, z * -1)
   }
 
-  fun rotateBy(other: Angle) : Velocity3d {
+  fun rotateBy(other: Angle): Velocity3d {
     return rotateBy(Rotation3d(0.radians, 0.radians, other))
   }
 
