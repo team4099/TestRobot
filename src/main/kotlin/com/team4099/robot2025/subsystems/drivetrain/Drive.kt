@@ -306,7 +306,7 @@ class Drive(
    * return to their normal orientations the next time a nonzero velocity is requested.
    */
   fun stopWithX() {
-    val headings: Array<Angle> = arrayOf()
+    val headings: Array<Angle> = Array(4) { 0.radians }
     for (i in 0..3) {
       headings[i] = Angle(moduleTranslations[i].x.inMeters, moduleTranslations[i].y.inMeters)
     }

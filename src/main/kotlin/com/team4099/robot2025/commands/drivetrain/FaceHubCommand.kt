@@ -66,9 +66,9 @@ class FaceHubCommand(
   private val thetaPID: PIDController<Radian, Velocity<Radian>>
   private var HUB_TRANSLATION: Translation2d =
     AllianceFlipUtil.apply(Translation2d(182.11.inches, 158.84.inches))
-  var hasAligned: Boolean = false
+  private val MAX_VELOCITY_RADIUS = 1.5.meters.perSecond
 
-  val MAX_VELOCITY_RADIUS = 1.5.meters.perSecond
+  var hasAligned: Boolean = false
 
   init {
     addRequirements(drivetrain)
@@ -155,72 +155,80 @@ class FaceHubCommand(
      * independently from time of flight.
      *
      * Variables:
-     * - v_launch = Launch velocity, represented as a number (vector) in 2D.
      * ```
-     *                Multiply by SHOOTER_ANGLE.cos or SHOOTER_ANGLE.sin for
-     *                v_launch_x or v_launch_y.
+     * v_launch = Launch velocity, represented as a number (vector) in 2D.
+     *            Multiply by SHOOTER_ANGLE.cos or SHOOTER_ANGLE.sin for
+     *            v_launch_x or v_launch_y.
+     * h = Height of the hub.
+     * s = Height of the shooter.
+     * d = Distance shooterTRobot + robotTHub.
+     * v_parallel = Movement of drivetrain, orthogonal to the robotTHub vector.
      * ```
-     * - h = Height of the hub.
-     * - s = Height of the shooter.
-     * - d = Distance robotTHub + shooterTRobot.
-     * - v_parallel = Movement of drivetrain, orthogonal to the robotTHub vector.
      *
      * From the following kinematics equations:
-     * - d = (v_launch * SHOOTER_ANGLE.cos + v_parallel) * t (1)
-     * - h = s + (v_launch * SHOOTER_ANGLE.sin) * t + (-g / 2) * t^2 (2)
+     * ```
+     * d = (v_launch * SHOOTER_ANGLE.cos + v_parallel) * t (1)
+     * h = s + (v_launch * SHOOTER_ANGLE.sin) * t + (-g / 2) * t^2 (2)
+     * ```
      *
      * Multiply (1) by (v_launch * SHOOTER_ANGLE.sin)
-     * - (v_launch * SHOOTER_ANGLE.sin) * d = (v_launch * SHOOTER_ANGLE.sin) * (v_launch *
-     * SHOOTER_ANGLE.cos + v_parallel) * t (3)
+     * ```
+     * (v_launch * SHOOTER_ANGLE.sin) * d = (v_launch * SHOOTER_ANGLE.sin) * (v_launch * SHOOTER_ANGLE.cos + v_parallel) * t (3)
+     * ```
      *
      * From (2):
-     * - (v_launch * SHOOTER_ANGLE.sin) * t = (h - s) + (g / 2) * t^2 (4)
+     * ```
+     * (v_launch * SHOOTER_ANGLE.sin) * t = (h - s) + (g / 2) * t^2 (4)
+     * ```
      *
      * Plug (4) into (3):
-     * - (v_launch * SHOOTER_ANGLE.sin) * d = ((h - s) + (g / 2) * t^2) * (v_launch *
-     * SHOOTER_ANGLE.cos + v_parallel) (5)
+     * ```
+     * (v_launch * SHOOTER_ANGLE.sin) * d = ((h - s) + (g / 2) * t^2) * (v_launch * SHOOTER_ANGLE.cos + v_parallel) (5)
+     * ```
      *
      * From (1):
-     * - t = d / (v_launch * SHOOTER_ANGLE.cos + v_parallel) (6)
-     *
+     * ```
+     * t = d / (v_launch * SHOOTER_ANGLE.cos + v_parallel) (6)
+     * ```
      * Substitute (6) into (5):
-     * - (v_launch * SHOOTER_ANGLE.sin) * d = = ((h - s) + (g / 2) * (d / (v_launch *
-     * SHOOTER_ANGLE.cos + v_parallel))^2) * (v_launch * SHOOTER_ANGLE.cos + v_parallel)
-     * - (v_launch * SHOOTER_ANGLE.sin) * d = (h - s) * (v_launch * SHOOTER_ANGLE.cos + v_parallel)
-     * + g * d^2 / (2 * (v_launch * SHOOTER_ANGLE.cos + v_p)) (7)
+     * ```
+     * (v_launch * SHOOTER_ANGLE.sin) * d = = ((h - s) + (g / 2) * (d / (v_launch * SHOOTER_ANGLE.cos + v_parallel))^2) * (v_launch * SHOOTER_ANGLE.cos + v_parallel)`
+     *
+     * (v_launch * SHOOTER_ANGLE.sin) * d = (h - s) * (v_launch * SHOOTER_ANGLE.cos + v_parallel) + g * d^2 / (2 * (v_launch * SHOOTER_ANGLE.cos + v_p))` (7)
+     * ```
      *
      * Multiply by (v_launch * SHOOTER_ANGLE.cos + v_parallel):
-     * - v_launch * SHOOTER_ANGLE.sin * d * (v_launch * SHOOTER_ANGLE.cos + v_parallel) = (h - s) *
-     * (v_launch * SHOOTER_ANGLE.cos + v_parallel)^2 + g * d^2 / 2
-     * - 0 = (h - s) * (v_launch * SHOOTER_ANGLE.cos + v_parallel)^2 + g * d^2 / 2 - v_launch *
-     * SHOOTER_ANGLE.sin * d * (v_launch * SHOOTER_ANGLE.cos + v_parallel)
-     * - 0 = (h - s) * (v_launch * SHOOTER_ANGLE.cos)^2 + (h - s) * v_parallel^2 + (h - s) * (2 *
-     * v_launch * SHOOTER_ANGLE.cos * v_parallel) + g * d^2 / 2 - v_launch^2 * SHOOTER_ANGLE.sin * d
-     * * SHOOTER_ANGLE.cos - v_launch * SHOOTER_ANGLE.sin * d * v_parallel
-     * - 0 =
      * ```
-     *        (h - s) * (SHOOTER_ANGLE.cos)^2 * v_launch^2                (Quadratic)
+     * v_launch * SHOOTER_ANGLE.sin * d * (v_launch * SHOOTER_ANGLE.cos + v_parallel) = (h - s) * (v_launch * SHOOTER_ANGLE.cos + v_parallel)^2 + g * d^2 / 2
+     *
+     * 0 = (h - s) * (v_launch * SHOOTER_ANGLE.cos + v_parallel)^2 + g * d^2 / 2 - v_launch * SHOOTER_ANGLE.sin * d * (v_launch * SHOOTER_ANGLE.cos + v_parallel)
+     *
+     * 0 = (h - s) * (v_launch * SHOOTER_ANGLE.cos)^2 + (h - s) * v_parallel^2 + (h - s) * (2 * v_launch * SHOOTER_ANGLE.cos * v_parallel) + g * d^2 / 2 - v_launch^2 * SHOOTER_ANGLE.sin * d * SHOOTER_ANGLE.cos - v_launch * SHOOTER_ANGLE.sin * d * v_parallel
+     *
+     * 0 =    (h - s) * (SHOOTER_ANGLE.cos)^2 * v_launch^2                (Quadratic term)
      *        - SHOOTER_ANGLE.sin * d * SHOOTER_ANGLE.cos * v_launch^2    (Quadratic term)
      *        + (h - s) * 2 * SHOOTER_ANGLE.cos * v_parallel * v_launch   (Linear term)
      *        - SHOOTER_ANGLE.sin * d * v_parallel * v_launch             (Linear term)
-     *        + (h - s) * v_parallel^2                                    (Constant)
-     *        + g * d^2 / 2                                               (Constant)
+     *        + (h - s) * v_parallel^2 + g * d^2 / 2                      (Constant)
      * ```
+     *
      * We know have a quadratic in terms of v_launch.
-     * - A = (h - s) * (SHOOTER_ANGLE.cos)^2 - SHOOTER_ANGLE.sin * SHOOTER_ANGLE.cos * d
-     * - B = 2 * (h - s) * SHOOTER_ANGLE.cos * v_parallel - SHOOTER_ANGLE.sin * d * v_parallel
-     * - C = (h - s) * v_parallel^2 + g * d^2 / 2
+     * ```
+     * A = (h - s) * (SHOOTER_ANGLE.cos)^2 - SHOOTER_ANGLE.sin * SHOOTER_ANGLE.cos * d
+     * B = 2 * (h - s) * SHOOTER_ANGLE.cos * v_parallel - SHOOTER_ANGLE.sin * d * v_parallel
+     * C = (h - s) * v_parallel^2 + g * d^2 / 2
+     * ```
      */
-    val v_launch_a =
+    val a =
       (HUB_HEIGHT.inMeters - SHOOTER_HEIGHT.inMeters) * SHOOTER_ANGLE.cos.pow(2) -
         SHOOTER_ANGLE.sin * SHOOTER_ANGLE.cos * distanceToHubMag.inMeters
-    val v_launch_b =
+    val b =
       2 *
         (HUB_HEIGHT.inMeters - SHOOTER_HEIGHT.inMeters) *
         SHOOTER_ANGLE.cos *
         parallelScalar.inMeters -
         SHOOTER_ANGLE.sin * distanceToHubMag.inMeters * parallelScalar.inMeters
-    val v_launch_c =
+    val c =
       (HUB_HEIGHT.inMeters - SHOOTER_HEIGHT.inMeters) * parallelScalar.inMeters.pow(2) +
         Constants.Universal.gravity.inMetersPerSecondPerSecond *
         distanceToHubMag.inMeters.pow(2) / 2.0
@@ -230,10 +238,8 @@ class FaceHubCommand(
     val launchSpeedFF = (distanceToHubMag.inMeters * 0.1).meters.perSecond
     val launchSpeed =
       max(
-        (-v_launch_b + sqrt(v_launch_b.pow(2) - 4.0 * v_launch_a * v_launch_c)) /
-          (2 * v_launch_a),
-        (-v_launch_b - sqrt(v_launch_b.pow(2) - 4.0 * v_launch_a * v_launch_c)) /
-          (2 * v_launch_a)
+        (-b + sqrt(b.pow(2) - 4.0 * a * c)) / (2 * a),
+        (-b - sqrt(b.pow(2) - 4.0 * a * c)) / (2 * a)
       )
         .meters
         .perSecond + launchSpeedFF
@@ -283,7 +289,7 @@ class FaceHubCommand(
     val speedMagnitude =
       sqrt(speedX.inMetersPerSecond.pow(2) + speedY.inMetersPerSecond.pow(2)).meters.perSecond
 
-    if (speedMagnitude > 0.1.meters.perSecond) {
+    if (speedMagnitude > 0.1.meters.perSecond || !hasAligned) {
       if (speedMagnitude > MAX_VELOCITY_RADIUS) {
         // Convert to unit vector and then * MAX_VELOCITY_RADIUS
         speedX = speedX / speedMagnitude.inMetersPerSecond * MAX_VELOCITY_RADIUS.inMetersPerSecond
