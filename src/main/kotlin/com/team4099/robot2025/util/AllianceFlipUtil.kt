@@ -13,6 +13,7 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance
 import org.team4099.lib.geometry.Pose2d
 import org.team4099.lib.geometry.Translation2d
 import org.team4099.lib.geometry.Translation2dWPILIB
+import org.team4099.lib.geometry.Translation3d
 import org.team4099.lib.units.base.Length
 import org.team4099.lib.units.base.inMeters
 import org.team4099.lib.units.base.meters
@@ -46,6 +47,11 @@ object AllianceFlipUtil {
     } else {
       translation
     }
+  }
+
+  fun apply(translation: Translation3d): Translation3d {
+    val appliedTranslation = apply(translation.toTranslation2d())
+    return Translation3d(appliedTranslation.x, appliedTranslation.y, translation.z)
   }
 
   /** Flips an x coordinate to the correct side of the field based on the current alliance color. */
