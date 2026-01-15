@@ -70,9 +70,9 @@ class Shooter {
      * @param targetTranslation The non-adjusted field-relative pose of the target.
      *
      * @return [CalculatedLaunchData] A data class containing the following information about the
-     * trajecotry and other informmation: shooter position, distance to target, launch velocity on
-     * the field plane, launch velocity in the vertical direction, time of flight, and the desired
-     * rotation to aim in that direction.
+     * trajectory and other information: shooter position, launch velocity on the field plane,
+     * launch velocity in the vertical direction, time of flight, and the desired rotation to aim in
+     * that direction.
      *
      * @see FaceHubCommand
      */
@@ -139,7 +139,7 @@ class Shooter {
        * h = Height of the hub.
        * s = Height of the shooter.
        * d = Distance shooterTRobot + robotTHub.
-       * v_parallel = Movement of drivetrain, orthogonal to the robotTHub vector.
+       * v_parallel = Movement of drivetrain, parallel to the robotTHub vector.
        * ```
        *
        * From the following kinematics equations:
