@@ -89,8 +89,17 @@ class FaceHubCommand(
     thetaPID.reset()
 
     hasAligned = false
-
-    HUB_TRANSLATION = AllianceFlipUtil.apply(Translation3d(182.11.inches, 158.84.inches, 72.inches))
+    HUB_TRANSLATION =
+      if ((
+        AllianceFlipUtil.shouldFlip() &&
+          drivetrain.pose.x > AllianceFlipUtil.apply(158.6.inches)
+        ) ||
+        (!AllianceFlipUtil.shouldFlip() && drivetrain.pose.x < 158.6.inches)
+      ) {
+        AllianceFlipUtil.apply(Translation3d(182.11.inches, 158.84.inches, 72.inches))
+      } else {
+        AllianceFlipUtil.apply(Translation3d(120.inches, 158.84.inches, 72.inches))
+      }
   }
 
   override fun execute() {
