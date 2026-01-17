@@ -155,7 +155,9 @@ class ShootOTFCommand(
       }
 
       drivetrain.runSpeeds(
-        ChassisSpeeds.fromFieldRelativeSpeeds(speedX, speedY, thetaVel, drivetrain.pose.rotation.z)
+        ChassisSpeeds.fromFieldRelativeSpeeds(
+          speedX, speedY, thetaVel, drivetrain.pose.rotation.z
+        )
       )
     } else {
       drivetrain.stopWithX()
@@ -171,12 +173,14 @@ class ShootOTFCommand(
       val fieldSpeeds =
         ChassisSpeeds(
           edu.wpi.first.math.kinematics.ChassisSpeeds.fromRobotRelativeSpeeds(
-            drivetrain.chassisSpeeds.chassisSpeedsWPILIB, drivetrain.rotation.z.inRotation2ds
+            drivetrain.chassisSpeeds.chassisSpeedsWPILIB,
+            drivetrain.rotation.z.inRotation2ds
           )
         )
 
       val shooterPosition =
-        drivetrain.pose.translation.toTranslation2d() + Shooter.SHOOTER_OFFSET.rotateBy(drivetrain.rotation.z)
+        drivetrain.pose.translation.toTranslation2d() +
+          Shooter.SHOOTER_OFFSET.rotateBy(drivetrain.rotation.z)
 
       val shooterCurrentTransform = Shooter.SHOOTER_OFFSET.rotateBy(drivetrain.rotation.z)
       val shooterSpeeds =
@@ -204,7 +208,7 @@ class ShootOTFCommand(
               (fieldSpeeds.vy + shooterSpeeds.y).inMetersPerSecond
             ) +
               WPITranslation2d(launchSpeedField.inMetersPerSecond, 0.0)
-                .rotateBy(drivetrain.rotation.inRotation2ds),
+                .rotateBy(drivetrain.rotation.z.inRotation2ds),
             Shooter.SHOOTER_HEIGHT.inMeters,
             launchSpeedZ.inMetersPerSecond,
             Rotation3d.kZero

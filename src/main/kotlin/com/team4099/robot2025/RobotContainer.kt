@@ -25,6 +25,8 @@ import org.ironmaple.simulation.SimulatedArena
 import org.ironmaple.simulation.drivesims.SwerveDriveSimulation
 import org.littletonrobotics.junction.Logger
 import org.team4099.lib.geometry.Pose2d
+import org.team4099.lib.geometry.Pose3d
+import org.team4099.lib.geometry.Rotation3d
 import org.team4099.lib.geometry.Transform3d
 import org.team4099.lib.smoothDeadband
 import org.team4099.lib.units.base.meters
@@ -92,7 +94,7 @@ object RobotContainer {
             ),
             poseSupplier = { drivetrain.pose }
           )
-      else vision = Vision(poseSupplier = { Pose2d() })
+      else vision = Vision(poseSupplier = { Pose3d() })
     }
   }
 
@@ -109,7 +111,7 @@ object RobotContainer {
   }
 
   fun zeroSensors(isInAutonomous: Boolean = false) {
-    drivetrain.pose = Pose2d(drivetrain.pose.x, drivetrain.pose.y, 0.radians)
+    drivetrain.pose = Pose3d(drivetrain.pose.x, drivetrain.pose.y, drivetrain.pose.z, Rotation3d())
   }
 
   fun setDriveBrakeMode(neutralModeValue: NeutralModeValue = NeutralModeValue.Brake) {

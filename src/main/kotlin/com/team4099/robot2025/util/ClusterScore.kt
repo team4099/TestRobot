@@ -4,6 +4,7 @@ import com.team4099.robot2025.config.constants.Constants
 import edu.wpi.first.math.geometry.Pose2d
 import edu.wpi.first.math.geometry.Rotation2d
 import edu.wpi.first.math.geometry.Translation2d
+import edu.wpi.first.math.geometry.Translation3d
 import org.tribuo.Feature
 import org.tribuo.Model
 import org.tribuo.MutableDataset
@@ -120,11 +121,11 @@ class ClusterScore {
 
     /* ---------------- Public API ---------------- */
 
-    fun calculateClusterScores(robotPose: Pose2d, points: List<Translation2d>): Pose2d {
+    fun calculateClusterScores(robotPose: Pose2d, points: List<Translation3d>): Pose2d {
 
       require(points.isNotEmpty()) { "Point list must not be empty" }
 
-      val dataset = createDataset(points)
+      val dataset = createDataset(points.map { it.toTranslation2d() })
 
       val trainer =
         HdbscanTrainer(
@@ -138,13 +139,13 @@ class ClusterScore {
       val model = trainer.train(dataset)
 
       val clusters =
-        collectClusters(model, points).filterValues {
+        collectClusters(model, points.map { it.toTranslation2d() }).filterValues {
           it.size >= Constants.ClusterScore.MIN_SCORE_CLUSTER_SIZE
         }
 
       // Fallback: all noise
       if (clusters.isEmpty()) {
-        return centroid(points)
+        return centroid(points.map { it.toTranslation2d() })
       }
 
       val scores =

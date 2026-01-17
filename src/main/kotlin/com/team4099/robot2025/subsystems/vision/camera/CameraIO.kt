@@ -109,7 +109,7 @@ interface CameraIO {
       table.get("cameraMatrix", MatBuilder.fill(Nat.N3(), Nat.N3(), *DoubleArray(9) { 0.0 }).data)
         .let { cameraMatrix = MatBuilder.fill(Nat.N3(), Nat.N3(), *it) }
 
-      cameraTargets = mutableListOf<PhotonTrackedTarget>()
+      cameraTargets = mutableListOf()
 
       for (targetID in 0 until indices) {
         val target = PhotonTrackedTarget()
@@ -167,7 +167,8 @@ interface CameraIO {
           if (result.hasTargets()) {
             var visionEst: Optional<EstimatedRobotPose> =
               photonEstimator.estimateCoprocMultiTagPose(result)
-
+            if (visionEst.isEmpty)
+              visionEst = photonEstimator.estimatePnpDistanceTrigSolvePose(result)
             if (visionEst.isEmpty) visionEst = photonEstimator.estimateLowestAmbiguityPose(result)
 
             if (visionEst.isPresent) {
