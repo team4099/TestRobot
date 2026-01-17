@@ -6,6 +6,7 @@ import com.team4099.robot2025.subsystems.drivetrain.Drive
 import com.team4099.robot2025.subsystems.superstructure.Shooter
 import com.team4099.robot2025.util.AllianceFlipUtil
 import com.team4099.robot2025.util.CustomLogger
+import com.team4099.robot2025.util.Velocity2d
 import com.team4099.robot2025.util.driver.DriverProfile
 import edu.wpi.first.math.geometry.Rotation3d
 import edu.wpi.first.units.Units.Kilograms
@@ -27,19 +28,37 @@ import org.team4099.lib.units.base.inSeconds
 import org.team4099.lib.units.base.inches
 import org.team4099.lib.units.base.meters
 import org.team4099.lib.units.derived.Radian
+import org.team4099.lib.units.derived.degrees
 import org.team4099.lib.units.derived.inDegrees
 import org.team4099.lib.units.derived.inRadians
 import org.team4099.lib.units.derived.inRotation2ds
 import org.team4099.lib.units.derived.radians
 import org.team4099.lib.units.inMetersPerSecond
+import org.team4099.lib.units.inRadiansPerSecond
 import org.team4099.lib.units.perSecond
 import kotlin.math.PI
 import kotlin.math.pow
 import kotlin.math.sqrt
 import edu.wpi.first.math.geometry.Translation2d as WPITranslation2d
 
-/** @author Nathan Arega, Ryan Chung */
-class FaceHubCommand(
+/**
+ * Aim, and shoot, for the HUB or to pass, depending on current position on the field and which
+ * option is legal. Velocity caluclations intend for this to be used while shooting and moving
+ * "on-the-fly".
+ *
+ * Note: This command never ends.
+ *
+ * @param drivetrain
+ * @param driveX
+ * @param driveY
+ * @param slowMode
+ * @param driver
+ *
+ * @see Shooter.calculateLaunchVelocity
+ *
+ * @author Nathan Arega, Ryan Chung
+ */
+class ShootOTFCommand(
   private val drivetrain: Drive,
   val driveX: () -> Double,
   val driveY: () -> Double,
@@ -48,7 +67,7 @@ class FaceHubCommand(
 ) : Command() {
   // TODO replace with real
   private val thetaPID: PIDController<Radian, Velocity<Radian>>
-  private var HUB_TRANSLATION: Translation3d =
+  private var TARGET_TRANSLATION: Translation3d =
     AllianceFlipUtil.apply(Translation3d(182.11.inches, 158.84.inches, 72.inches))
   private val MAX_VELOCITY_RADIUS = 1.5.meters.perSecond
 
@@ -89,7 +108,7 @@ class FaceHubCommand(
     thetaPID.reset()
 
     hasAligned = false
-    HUB_TRANSLATION =
+    TARGET_TRANSLATION =
       if ((
         AllianceFlipUtil.shouldFlip() &&
           drivetrain.pose.x > AllianceFlipUtil.apply(158.6.inches)
@@ -105,9 +124,10 @@ class FaceHubCommand(
   override fun execute() {
     CustomLogger.recordOutput("ActiveCommands/FaceHubCommand", true)
 
-    // TODO - Realistically, some of this should be moved to superstructure during SCORE state?
     val (distanceToHub, launchSpeedField, launchSpeedZ, timeOfFlight, wantedRotation) =
-      Shooter.calculateLaunchVelocity(drivetrain.pose, drivetrain.chassisSpeeds, HUB_TRANSLATION)
+      Shooter.calculateLaunchVelocity(
+        drivetrain.pose, drivetrain.chassisSpeeds, TARGET_TRANSLATION
+      )
 
     // PID and clamping of the calculated theta velocity
     val thetaVel = thetaPID.calculate(drivetrain.rotation, wantedRotation)
@@ -156,6 +176,14 @@ class FaceHubCommand(
       val shooterPosition =
         drivetrain.pose.translation + Shooter.SHOOTER_OFFSET.rotateBy(drivetrain.rotation)
 
+      val shooterCurrentTransform = Shooter.SHOOTER_OFFSET.rotateBy(drivetrain.rotation)
+      val shooterSpeeds =
+        Velocity2d(
+          (shooterCurrentTransform.x * fieldSpeeds.omega.inRadiansPerSecond).perSecond,
+          (shooterCurrentTransform.y * fieldSpeeds.omega.inRadiansPerSecond).perSecond
+        )
+          .rotateBy(90.degrees * fieldSpeeds.omega.sign)
+
       SimulatedArena.getInstance()
         .addGamePieceProjectile(
           GamePieceProjectile(
@@ -170,7 +198,8 @@ class FaceHubCommand(
             ),
             shooterPosition.translation2d,
             WPITranslation2d(
-              fieldSpeeds.vx.inMetersPerSecond, fieldSpeeds.vy.inMetersPerSecond
+              (fieldSpeeds.vx + shooterSpeeds.x).inMetersPerSecond,
+              (fieldSpeeds.vy + shooterSpeeds.y).inMetersPerSecond
             ) +
               WPITranslation2d(launchSpeedField.inMetersPerSecond, 0.0)
                 .rotateBy(drivetrain.rotation.inRotation2ds),

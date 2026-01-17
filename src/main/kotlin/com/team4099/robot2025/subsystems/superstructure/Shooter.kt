@@ -1,7 +1,8 @@
 package com.team4099.robot2025.subsystems.superstructure
 
-import com.team4099.robot2025.commands.drivetrain.FaceHubCommand
+import com.team4099.robot2025.commands.drivetrain.ShootOTFCommand
 import com.team4099.robot2025.config.constants.Constants
+import com.team4099.robot2025.util.Velocity2d
 import edu.wpi.first.math.Matrix
 import edu.wpi.first.math.Nat.N1
 import edu.wpi.first.math.Nat.N2
@@ -26,6 +27,7 @@ import org.team4099.lib.units.derived.radians
 import org.team4099.lib.units.derived.sin
 import org.team4099.lib.units.inMetersPerSecond
 import org.team4099.lib.units.inMetersPerSecondPerSecond
+import org.team4099.lib.units.inRadiansPerSecond
 import org.team4099.lib.units.perSecond
 import kotlin.math.atan2
 import kotlin.math.max
@@ -36,7 +38,7 @@ class Shooter {
   companion object {
     val SHOOTER_HEIGHT = 14.876.inches
     val SHOOTER_ANGLE = 70.degrees
-    val SHOOTER_OFFSET = Translation2d(-9.330139.inches, 0.meters)
+    val SHOOTER_OFFSET = Translation2d(-9.330139.inches, -10.inches)
 
     /**
      * Result of a launch velocity calculation.
@@ -74,7 +76,7 @@ class Shooter {
      * launch velocity in the vertical direction, time of flight, and the desired rotation to aim in
      * that direction.
      *
-     * @see FaceHubCommand
+     * @see ShootOTFCommand
      */
     fun calculateLaunchVelocity(
       drivetrainPose: Pose2d,
@@ -99,13 +101,24 @@ class Shooter {
             chassisSpeeds.chassisSpeedsWPILIB, drivetrainPose.rotation.inRotation2ds
           )
         )
+
+      // Shooter tangential velocity
+      val shooterCurrentTransform = SHOOTER_OFFSET.rotateBy(drivetrainPose.rotation)
+      val shooterSpeeds =
+        Velocity2d(
+          (shooterCurrentTransform.x * fieldSpeeds.omega.inRadiansPerSecond).perSecond,
+          (shooterCurrentTransform.y * fieldSpeeds.omega.inRadiansPerSecond).perSecond
+        )
+          .rotateBy(90.degrees * fieldSpeeds.omega.sign)
+
       val driveVector =
         Vector(
           Matrix(
             N2(),
             N1(),
             doubleArrayOf(
-              fieldSpeeds.vx.inMetersPerSecond, fieldSpeeds.vy.inMetersPerSecond
+              (fieldSpeeds.vx + shooterSpeeds.x).inMetersPerSecond,
+              (fieldSpeeds.vy + shooterSpeeds.y).inMetersPerSecond
             )
           )
         )
