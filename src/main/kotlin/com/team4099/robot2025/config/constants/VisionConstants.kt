@@ -5,6 +5,7 @@ import edu.wpi.first.math.Matrix
 import edu.wpi.first.math.VecBuilder
 import edu.wpi.first.math.numbers.N1
 import edu.wpi.first.math.numbers.N3
+import edu.wpi.first.math.numbers.N4
 import org.team4099.lib.geometry.Pose2d
 import org.team4099.lib.geometry.Rotation3d
 import org.team4099.lib.geometry.Transform3d
@@ -133,8 +134,8 @@ object VisionConstants {
 
   // x, y, θ
   // TODO tune
-  val singleTagStdDevs: Matrix<N3?, N1?> = VecBuilder.fill(4.0, 4.0, 10.0)
-  val multiTagStdDevs: Matrix<N3?, N1?> = VecBuilder.fill(0.5, 0.5, 7.0)
+  val singleTagStdDevs: Matrix<N4?, N1?> = VecBuilder.fill(4.0, 4.0, 8.0, 10.0)
+  val multiTagStdDevs: Matrix<N4?, N1?> = VecBuilder.fill(0.5, 0.5, 4.0, 7.0)
 
   val oldStdDevs: Matrix<N3?, N1?> = VecBuilder.fill(XY_STDDEV, XY_STDDEV, THETA_STDDEV)
 

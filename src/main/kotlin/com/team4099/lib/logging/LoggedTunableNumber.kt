@@ -1,7 +1,8 @@
 package com.team4099.lib.logging
 
 import com.team4099.robot2025.config.constants.Constants
-import org.littletonrobotics.junction.networktables.LoggedDashboardNumber
+import org.littletonrobotics.junction.Logger
+import org.littletonrobotics.junction.networktables.LoggedNetworkNumber
 
 /**
  * Class for a tunable number. Gets value from dashboard in tuning mode, returns default if not or
@@ -11,8 +12,9 @@ class LoggedTunableNumber(dashboardKey: String) {
   private val key: String
   private var hasDefault = false
   private var defaultValue = 0.0
-  private var dashboardNumber: LoggedDashboardNumber? = null
+  private var LoggedNetworkNumber: LoggedNetworkNumber? = null
   private var lastHasChangedValue = 0.0
+  private var CurrentValue = 0.0
 
   /**
    * Create a new LoggedTunableNumber with the default value
@@ -34,8 +36,9 @@ class LoggedTunableNumber(dashboardKey: String) {
       hasDefault = true
       this.defaultValue = defaultValue
       if (Constants.Tuning.TUNING_MODE) {
-        dashboardNumber = LoggedDashboardNumber(key, defaultValue)
+        Logger.registerDashboardInput(LoggedNetworkNumber(key))
       }
+      // dashboardNumber = LoggedDashboardNumber(key, defaultValue)
     }
   }
 
@@ -49,7 +52,7 @@ class LoggedTunableNumber(dashboardKey: String) {
       return 0.0
     } else {
       if (Constants.Tuning.TUNING_MODE) {
-        return dashboardNumber?.get() ?: defaultValue
+        return LoggedNetworkNumber?.get() ?: defaultValue
       } else {
         return defaultValue
       }

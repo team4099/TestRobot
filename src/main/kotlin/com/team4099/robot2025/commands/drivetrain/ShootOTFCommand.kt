@@ -46,6 +46,8 @@ import edu.wpi.first.math.geometry.Translation2d as WPITranslation2d
  * option is legal. Velocity caluclations intend for this to be used while shooting and moving
  * "on-the-fly".
  *
+ * Note: This command assumes a flat drivetrain on z = 0.
+ *
  * Note: This command never ends.
  *
  * @param drivetrain
@@ -126,11 +128,11 @@ class ShootOTFCommand(
 
     val (distanceToHub, launchSpeedField, launchSpeedZ, timeOfFlight, wantedRotation) =
       Shooter.calculateLaunchVelocity(
-        drivetrain.pose, drivetrain.chassisSpeeds, TARGET_TRANSLATION
+        drivetrain.pose.toPose2d(), drivetrain.chassisSpeeds, TARGET_TRANSLATION
       )
 
     // PID and clamping of the calculated theta velocity
-    val thetaVel = thetaPID.calculate(drivetrain.rotation, wantedRotation)
+    val thetaVel = thetaPID.calculate(drivetrain.rotation.z, wantedRotation)
 
     CustomLogger.recordOutput("FaceHubCommand/thetaError", thetaPID.error.inDegrees)
 
@@ -153,7 +155,7 @@ class ShootOTFCommand(
       }
 
       drivetrain.runSpeeds(
-        ChassisSpeeds.fromFieldRelativeSpeeds(speedX, speedY, thetaVel, drivetrain.pose.rotation)
+        ChassisSpeeds.fromFieldRelativeSpeeds(speedX, speedY, thetaVel, drivetrain.pose.rotation.z)
       )
     } else {
       drivetrain.stopWithX()
@@ -169,14 +171,14 @@ class ShootOTFCommand(
       val fieldSpeeds =
         ChassisSpeeds(
           edu.wpi.first.math.kinematics.ChassisSpeeds.fromRobotRelativeSpeeds(
-            drivetrain.chassisSpeeds.chassisSpeedsWPILIB, drivetrain.rotation.inRotation2ds
+            drivetrain.chassisSpeeds.chassisSpeedsWPILIB, drivetrain.rotation.z.inRotation2ds
           )
         )
 
       val shooterPosition =
-        drivetrain.pose.translation + Shooter.SHOOTER_OFFSET.rotateBy(drivetrain.rotation)
+        drivetrain.pose.translation.toTranslation2d() + Shooter.SHOOTER_OFFSET.rotateBy(drivetrain.rotation.z)
 
-      val shooterCurrentTransform = Shooter.SHOOTER_OFFSET.rotateBy(drivetrain.rotation)
+      val shooterCurrentTransform = Shooter.SHOOTER_OFFSET.rotateBy(drivetrain.rotation.z)
       val shooterSpeeds =
         Velocity2d(
           (shooterCurrentTransform.x * fieldSpeeds.omega.inRadiansPerSecond).perSecond,

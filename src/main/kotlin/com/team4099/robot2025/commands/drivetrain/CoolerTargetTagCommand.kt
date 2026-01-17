@@ -144,7 +144,7 @@ class CoolerTargetTagCommand(
 
     val exists = odomTTag != Transform2d(Translation2d(), 0.degrees)
     CustomLogger.recordOutput("CoolerTargetTagCommand/odomTTagExists", exists)
-    if (!exists || Clock.realTimestamp - lastUpdate.timestamp > .5.seconds)
+    if (!exists || Clock.fpgaTime - lastUpdate.timestamp > .5.seconds)
       end(interrupted = true) // todo kalman?
 
     val setpointTranslation = odomTTag.translation

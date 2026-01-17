@@ -82,7 +82,7 @@ class Vision(vararg cameras: CameraIO, val poseSupplier: Supplier<Pose2d>) : Sub
   init {
     if (RobotBase.isSimulation() && Constants.Universal.SIMULATE_VISION) {
       visionSim = VisionSystemSim("main")
-      visionSim!!.addAprilTags(FieldConstants.customFieldLayout)
+      visionSim!!.addAprilTags(FieldConstants.fieldLayout)
 
       cameras.forEach { camera ->
         visionSim!!.addCamera(camera.cameraSim, camera.transform.transform3d)
@@ -141,16 +141,11 @@ class Vision(vararg cameras: CameraIO, val poseSupplier: Supplier<Pose2d>) : Sub
                 ) {
 
                   val aprilTagAlignmentAngle =
-                    FieldConstants.customFieldLayout
-                      .getTagPose(tag.fiducialId)
-                      .get()
-                      .rotation
-                      .z
-                      .radians
+                    FieldConstants.fieldLayout.getTagPose(tag.fiducialId).get().rotation.z.radians
 
                   val fieldTTag =
                     Pose3d(
-                      FieldConstants.customFieldLayout
+                      FieldConstants.fieldLayout
                         .getTagPose(tag.fiducialId)
                         .orElse(
                           edu.wpi.first.math.geometry.Pose3d(
@@ -456,7 +451,7 @@ class Vision(vararg cameras: CameraIO, val poseSupplier: Supplier<Pose2d>) : Sub
     }
 
     Logger.recordOutput(
-      "LoggedRobot/Subsystems/VisionLoopTimeMS", (Clock.realTimestamp - startTime).inMilliseconds
+      "LoggedRobot/Subsystems/VisionLoopTimeMS", (Clock.fpgaTime - startTime).inMilliseconds
     )
   }
 }

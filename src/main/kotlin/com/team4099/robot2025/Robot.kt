@@ -4,6 +4,7 @@ import com.pathplanner.lib.commands.FollowPathCommand
 import com.team4099.lib.hal.Clock
 import com.team4099.robot2025.auto.AutonomousSelector
 import com.team4099.robot2025.commands.drivetrain.DrivePathOTF
+import com.team4099.robot2025.config.ControlBoard
 import com.team4099.robot2025.config.constants.Constants
 import com.team4099.robot2025.util.Alert
 import com.team4099.robot2025.util.Alert.AlertType
@@ -30,9 +31,9 @@ import org.ejml.EjmlVersion.GIT_BRANCH
 import org.ejml.EjmlVersion.GIT_SHA
 import org.ejml.EjmlVersion.MAVEN_NAME
 import org.littletonrobotics.junction.LogFileUtil
+import org.littletonrobotics.junction.LoggedPowerDistribution
 import org.littletonrobotics.junction.LoggedRobot
 import org.littletonrobotics.junction.Logger
-import org.littletonrobotics.junction.inputs.LoggedPowerDistribution
 import org.littletonrobotics.junction.wpilog.WPILOGReader
 import org.littletonrobotics.junction.wpilog.WPILOGWriter
 import org.team4099.lib.units.base.inMilliseconds
@@ -52,14 +53,6 @@ object Robot : LoggedRobot() {
     Alert("Tuning Mode Enabled. Expect loop times to be greater", AlertType.WARNING)
   lateinit var allianceSelected: GenericEntry
   lateinit var autonomousCommand: Command
-  lateinit var autonomousLoadingCommand: Command
-  /*
-  val port0 = AnalogInput(0)
-  val port1 = AnalogInput(1)
-  val port2 = AnalogInput(2)
-  val port3 = AnalogInput(3)
-
-   */
 
   override fun robotInit() {
     // elastic layout upload dont remove
@@ -129,8 +122,8 @@ object Robot : LoggedRobot() {
 
     // init robot container too
     RobotContainer
-    RobotContainer.mapDefaultCommands()
     AutonomousSelector
+    RobotContainer.mapDefaultCommands()
 
     // init commands that have long startup
     DrivePathOTF.warmupCommand()
@@ -156,15 +149,18 @@ object Robot : LoggedRobot() {
         .withWidget(BuiltInWidgets.kTextView)
         .entry
 
-    FollowPathCommand.warmupCommand().schedule()
+    CommandScheduler.getInstance().schedule(FollowPathCommand.warmupCommand())
 
     Logger.recordOutput("RobotSimulation/simulateVision", Constants.Universal.SIMULATE_VISION)
+
+    if (isSimulation()) {
+      DriverStation.silenceJoystickConnectionWarning(true)
+    }
   }
 
   override fun autonomousInit() {
-    val autonCommandWithWait =
-      runOnce({ RobotContainer.zeroSensors(isInAutonomous = true) }).andThen(autonomousCommand)
-    autonCommandWithWait?.schedule()
+    val autonCommandWithWait = runOnce({ RobotContainer.zeroSensors() }).andThen(autonomousCommand)
+    CommandScheduler.getInstance().schedule(autonCommandWithWait)
   }
 
   override fun disabledPeriodic() {
@@ -173,13 +169,11 @@ object Robot : LoggedRobot() {
   }
 
   override fun disabledInit() {
-    // RobotContainer.requestIdle()
-    // autonomousCommand.cancel()
     RobotContainer.resetSimulationField()
   }
 
   override fun robotPeriodic() {
-    val startTime = Clock.realTimestamp
+    val startTime = Clock.fpgaTime
 
     // begin scheduling all commands
     CommandScheduler.getInstance().run()
@@ -191,20 +185,17 @@ object Robot : LoggedRobot() {
       "LoggedRobot/RemainingRamMB", Runtime.getRuntime().freeMemory() / 1024 / 1024
     )
 
-    CustomLogger.recordDebugOutput(
-      "LoggedRobot/totalMS", (Clock.realTimestamp - startTime).inMilliseconds
-    )
+    ControlBoard.driverRumbleConsumer.accept(false)
+    ControlBoard.operatorRumbleConsumer.accept(false)
 
-    if (isSimulation()) {
-      DriverStation.silenceJoystickConnectionWarning(true)
-    }
+    CustomLogger.recordDebugOutput(
+      "LoggedRobot/totalMS", (Clock.fpgaTime - startTime).inMilliseconds
+    )
   }
 
   override fun teleopInit() {
-    //    RobotContainer.zeroSensors(isInAutonomous = false)
     RobotContainer.mapTeleopControls()
     RobotContainer.getAutonomousCommand().cancel()
-    //    RobotContainer.requestIdle()
     RobotContainer.setDriveBrakeMode()
     if (Constants.Tuning.TUNING_MODE) {
       RobotContainer.mapTunableCommands()
@@ -216,7 +207,6 @@ object Robot : LoggedRobot() {
   override fun testInit() {
     RobotContainer.mapTestControls()
     RobotContainer.getAutonomousCommand().cancel()
-    Logger.start()
   }
 
   override fun simulationPeriodic() {
