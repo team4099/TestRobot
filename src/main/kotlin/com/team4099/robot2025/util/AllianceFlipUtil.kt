@@ -1,10 +1,7 @@
 package com.team4099.robot2025.util
 
 import com.team4099.lib.math.Zone2d
-import com.team4099.lib.trajectory.FieldWaypoint
-import com.team4099.lib.trajectory.OdometryWaypoint
 import com.team4099.lib.trajectory.RotationSequence
-import com.team4099.lib.trajectory.Waypoint
 import com.team4099.robot2025.config.constants.FieldConstants
 import edu.wpi.first.math.geometry.Rotation2d
 import edu.wpi.first.math.trajectory.Trajectory
@@ -84,21 +81,6 @@ object AllianceFlipUtil {
       )
     } else {
       pose
-    }
-  }
-
-  /*
-  Don't flip an OdometryWaypoint because it's done relative to robot origin
-   */
-  fun apply(waypoint: OdometryWaypoint): Waypoint {
-    return waypoint
-  }
-
-  fun apply(waypoint: FieldWaypoint): Waypoint {
-    return if (shouldFlip()) {
-      FieldWaypoint(apply(waypoint.translation), waypoint.driveRotation, waypoint.holonomicRotation)
-    } else {
-      waypoint
     }
   }
 

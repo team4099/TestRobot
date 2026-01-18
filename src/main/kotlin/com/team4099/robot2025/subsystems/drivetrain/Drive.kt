@@ -90,8 +90,8 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds as WPIChassisSpeeds
 class Drive(
   private val gyroIO: GyroIO,
   moduleIOs: Array<ModuleIO>,
-  val getSimulationPoseCallback: Supplier<edu.wpi.first.math.geometry.Pose2d>,
-  val resetSimulationPoseCallback: Consumer<edu.wpi.first.math.geometry.Pose2d>
+  val getSimulationPoseCallback: Supplier<WPIPose2d>,
+  val resetSimulationPoseCallback: Consumer<WPIPose2d>
 ) : SubsystemBase() {
   private val gyroInputs: GyroIO.GyroIOInputs = GyroIO.GyroIOInputs()
   private val modules = arrayOfNulls<Module>(4) // FL, FR, BL, BR

@@ -4,6 +4,7 @@ import com.ctre.phoenix6.CANBus
 import com.ctre.phoenix6.configs.CANcoderConfiguration
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs
 import com.ctre.phoenix6.configs.MotorOutputConfigs
+import com.ctre.phoenix6.configs.MountPoseConfigs
 import com.ctre.phoenix6.configs.Pigeon2Configuration
 import com.ctre.phoenix6.configs.Slot0Configs
 import com.ctre.phoenix6.configs.TalonFXConfiguration
@@ -16,11 +17,13 @@ import com.ctre.phoenix6.swerve.SwerveModuleConstants.DriveMotorArrangement
 import com.ctre.phoenix6.swerve.SwerveModuleConstants.SteerMotorArrangement
 import com.ctre.phoenix6.swerve.SwerveModuleConstantsFactory
 import com.team4099.robot2025.config.constants.DrivetrainConstants
+import com.team4099.robot2025.config.constants.GyroConstants
 import org.team4099.lib.units.base.grams
 import org.team4099.lib.units.base.inAmperes
 import org.team4099.lib.units.base.inMeters
 import org.team4099.lib.units.base.inches
 import org.team4099.lib.units.derived.ElectricalPotential
+import org.team4099.lib.units.derived.inDegrees
 import org.team4099.lib.units.derived.inKilogramsMeterSquared
 import org.team4099.lib.units.derived.inRotations
 import org.team4099.lib.units.derived.inVolts
@@ -45,58 +48,22 @@ object TunerConstants {
   // output type specified by SwerveModuleConstants.SteerMotorClosedLoopOutput
   private val steerGains: Slot0Configs? =
     Slot0Configs()
-      .withKP(
-        com.team4099.robot2025.config.constants.DrivetrainConstants.PID
-          .STEERING_KP
-          .inVoltsPerRadian
-      )
-      .withKI(
-        com.team4099.robot2025.config.constants.DrivetrainConstants.PID
-          .STEERING_KI
-          .inVoltsPerRadianSeconds
-      )
-      .withKD(
-        com.team4099.robot2025.config.constants.DrivetrainConstants.PID
-          .STEERING_KD
-          .inVoltsPerRadianPerSecond
-      )
-      .withKV(
-        com.team4099.robot2025.config.constants.DrivetrainConstants.PID
-          .STEERING_KV
-          .inVoltsPerRadiansPerSecond
-      )
+      .withKP(DrivetrainConstants.PID.STEERING_KP.inVoltsPerRadian)
+      .withKI(DrivetrainConstants.PID.STEERING_KI.inVoltsPerRadianSeconds)
+      .withKD(DrivetrainConstants.PID.STEERING_KD.inVoltsPerRadianPerSecond)
+      .withKV(DrivetrainConstants.PID.STEERING_KV.inVoltsPerRadiansPerSecond)
       .withStaticFeedforwardSign(StaticFeedforwardSignValue.UseClosedLoopSign)
 
   // When using closed-loop control, the drive motor uses the control
   // output type specified by SwerveModuleConstants.DriveMotorClosedLoopOutput
   private val driveGains: Slot0Configs? =
     Slot0Configs()
-      .withKP(
-        com.team4099.robot2025.config.constants.DrivetrainConstants.PID
-          .DRIVE_KP
-          .inVoltsPerMetersPerSecond
-      )
-      .withKI(
-        com.team4099.robot2025.config.constants.DrivetrainConstants.PID
-          .DRIVE_KI
-          .inVoltsPerMeters
-      )
-      .withKD(
-        com.team4099.robot2025.config.constants.DrivetrainConstants.PID
-          .DRIVE_KD
-          .inVoltsPerMetersPerSecondPerSecond
-      )
-      .withKS(com.team4099.robot2025.config.constants.DrivetrainConstants.PID.DRIVE_KS.inVolts)
-      .withKV(
-        com.team4099.robot2025.config.constants.DrivetrainConstants.PID
-          .DRIVE_KV
-          .inVoltsPerMetersPerSecond
-      )
-      .withKA(
-        com.team4099.robot2025.config.constants.DrivetrainConstants.PID
-          .DRIVE_KA
-          .inVoltsPerMetersPerSecondPerSecond
-      )
+      .withKP(DrivetrainConstants.PID.DRIVE_KP.inVoltsPerMetersPerSecond)
+      .withKI(DrivetrainConstants.PID.DRIVE_KI.inVoltsPerMeters)
+      .withKD(DrivetrainConstants.PID.DRIVE_KD.inVoltsPerMetersPerSecondPerSecond)
+      .withKS(DrivetrainConstants.PID.DRIVE_KS.inVolts)
+      .withKV(DrivetrainConstants.PID.DRIVE_KV.inVoltsPerMetersPerSecond)
+      .withKA(DrivetrainConstants.PID.DRIVE_KA.inVoltsPerMetersPerSecondPerSecond)
 
   // The closed-loop output type to use for the steer motors;
   // This affects the PID/FF gains for the steer motors
@@ -165,7 +132,15 @@ object TunerConstants {
   private val encoderInitialConfigs = CANcoderConfiguration()
 
   // Configs for the Pigeon 2; leave this null to skip applying Pigeon 2 configs
-  private val pigeonConfigs: Pigeon2Configuration? = null
+  // TODO CHECK!
+  private val pigeonConfigs: Pigeon2Configuration? =
+    Pigeon2Configuration()
+      .withMountPose(
+        MountPoseConfigs()
+          .withMountPosePitch(GyroConstants.mountPitch.inDegrees)
+          .withMountPoseRoll(GyroConstants.mountRoll.inDegrees)
+          .withMountPoseYaw(GyroConstants.mountYaw.inDegrees)
+      )
 
   // CAN bus that the devices are located on;
   // All swerve devices must share the same CAN bus
